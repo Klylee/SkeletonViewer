@@ -150,7 +150,7 @@ void Shader::useProgram()
     glUseProgram(program);
 }
 
-void Shader::deleteprogram()
+void Shader::deleteProgram()
 {
     glDeleteProgram(program);
 }

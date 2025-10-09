@@ -29,7 +29,7 @@ public:
     Shader(const std::string &shaderpath);
 
     void useProgram();
-    void deleteprogram();
+    void deleteProgram();
 
     void setUniform1f(const std::string &label, float v);
     void setUniform1i(const std::string &label, int v);

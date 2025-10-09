@@ -18,6 +18,7 @@
 #include "Event.h"
 #include "Input.h"
 #include "GlobalTime.h"
+#include "SceneManager.h"
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
@@ -69,8 +70,6 @@ void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
 #define HEIGHT 900
 int main()
 {
-    std::string greeting = "Hello, World!";
-    std::cout << greeting << std::endl;
     std::cout << "Starting GLFW context, OpenGL 4.6" << std::endl;
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -105,21 +104,12 @@ int main()
     std::cout << "OpenGL Renderer: " << glGetString(GL_RENDERER) << std::endl;
     std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
 
-    std::vector<std::shared_ptr<SceneObject>> sceneObjects;
-    std::unordered_map<std::string, std::weak_ptr<SceneObject>> sceneObjectMap;
-    {
-        auto mainCamera = SceneObject::create("Camera", "main camera");
-        auto model = SceneObject::create("Model", "mesh13");
-        sceneObjects.push_back(mainCamera);
-        sceneObjects.push_back(model);
-        // sceneObjects.push_back(SceneObject::create("Model", "node1"));
+    SceneManager::SetCurrentScene(std::make_shared<Scene>());
+    SceneManager::AddObject(SceneObject::create("Camera", "main camera"));
+    SceneManager::AddObject(SceneObject::create("Model", "mesh13"));
 
-        sceneObjectMap["main camera"] = mainCamera;
-        sceneObjectMap["mesh13"] = model;
-    }
     {
-        auto model = std::dynamic_pointer_cast<Model>(sceneObjectMap["mesh13"].lock());
-        assert(model != nullptr);
+        auto model = SceneManager::GetObject<Model>("mesh13");
         model->directory = Path(ROOT_DIR) + "/assets";
         model->filename = "mesh13_rigged.glb";
         model->awake();
@@ -130,31 +120,14 @@ int main()
         {
             auto [nodeNmae, head, tail] = it;
             auto nodeObj = std::dynamic_pointer_cast<Model>(SceneObject::create("Model", nodeNmae));
-            sceneObjects.push_back(nodeObj);
             nodeObj->directory = Path(ROOT_DIR) + "/assets";
             nodeObj->filename = "ico-sphere.obj";
             nodeObj->awake();
             nodeObj->transform.scale(Vector3(0.0002, 0.0002, 0.0002));
             nodeObj->transform.position(head);
             nodeObj->initialize();
+            SceneManager::AddObject(nodeObj);
         }
-    }
-
-    for (auto it : sceneObjects)
-    {
-        sceneObjectMap[it->objName] = it;
-    }
-    {
-        // auto node1 = std::dynamic_pointer_cast<Model>(sceneObjectMap["node1"].lock());
-        // node1->directory = Path(ROOT_DIR) + "/assets";
-        // node1->filename = "ico-sphere.obj";
-        // node1->awake();
-        // node1->transform.scale(Vector3(0.001, 0.001, 0.001));
-        // node1->initialize();
-
-        auto camera = std::dynamic_pointer_cast<Camera>(sceneObjectMap["main camera"].lock());
-        assert(camera != nullptr);
-        // std::cout << (std::string)*model << (std::string)*camera << std::endl;
     }
 
     Shader shader(Path(ROOT_DIR) + "assets/shader/transparent.shader");
@@ -172,10 +145,7 @@ int main()
         float deltaTime = GlobalTime::GetFrameDeltaTime();
         // std::cout << "Delta Time: " << deltaTime << " seconds." << std::endl;
 
-        for (auto it : sceneObjects)
-        {
-            it->update();
-        }
+        SceneManager::Update();
 
         glClearColor(1, 1, 1, 1);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -183,11 +153,11 @@ int main()
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        auto camera = std::dynamic_pointer_cast<Camera>(sceneObjectMap["main camera"].lock());
+        auto camera = SceneManager::GetObject<Camera>("main camera");
+
+        auto model = SceneManager::GetObject<Model>("mesh13");
         shader.setUniformMat4x4f("projection", 1, glm::value_ptr(camera->GetProjectionMatrix((float)WIDTH / (float)HEIGHT)));
         shader.setUniformMat4x4f("view", 1, glm::value_ptr(camera->getViewMatrix()));
-
-        auto model = std::dynamic_pointer_cast<Model>(sceneObjectMap["mesh13"].lock());
         shader.setUniformMat4x4f("model", 1, glm::value_ptr(model->transform.localToWorld()));
         shader.uniforms["color"] = {"vec4f",
                                     glm::vec4(2.0f / 255.0f, 163.0f / 255.0f, 218.0f / 255.0f, 0.3f)};
@@ -197,7 +167,7 @@ int main()
         for (auto it : model->bones)
         {
             auto [nodeNmae, _1, _2] = it;
-            auto nodeObj = std::dynamic_pointer_cast<Model>(sceneObjectMap[nodeNmae].lock());
+            auto nodeObj = SceneManager::GetObject<Model>(nodeNmae);
             shader.setUniformMat4x4f("projection", 1, glm::value_ptr(camera->GetProjectionMatrix((float)WIDTH / (float)HEIGHT)));
             shader.setUniformMat4x4f("view", 1, glm::value_ptr(camera->getViewMatrix()));
             shader.setUniformMat4x4f("model", 1, glm::value_ptr(nodeObj->transform.localToWorld()));
@@ -211,6 +181,7 @@ int main()
         glfwPollEvents();
     }
 
+    shader.deleteProgram();
     glfwTerminate();
     return 0;
 }

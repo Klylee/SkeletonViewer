@@ -42,7 +42,7 @@ public:
 	{
 		return glm::normalize(glm::cross(GetRight(), GetForward()));
 	}
-	Mat4 getViewMatrix()
+	Mat4 GetViewMatrix()
 	{
 		Vector3 camPos = transform.position();
 		Vector3 camUp = Vector3(0, 1, 0);

@@ -1,8 +1,10 @@
 #include "Model.h"
 #include <iostream>
 #include <sstream>
+#include <format>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
+#include "MeshManager.h"
 
 aiMatrix4x4 GetGlobalTransform(aiNode *node)
 {
@@ -57,9 +59,8 @@ Vector3 GetBoneTailExact(aiNode *node)
 void Model::awake()
 {
     Path filepath = directory + filename;
-    std::string filepath_utf8 = filepath;
     Assimp::Importer imp;
-    const aiScene *scene = imp.ReadFile(filepath_utf8, aiProcess_Triangulate | aiProcess_FlipUVs);
+    const aiScene *scene = imp.ReadFile(filepath, aiProcess_Triangulate | aiProcess_FlipUVs);
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
     {
         std::cout << "ERROR::ASSIMP::" << imp.GetErrorString() << std::endl;
@@ -78,15 +79,16 @@ void Model::initialize()
         meshes[i]->initialize();
 }
 
-void Model::draw(std::shared_ptr<Shader> shader)
+void Model::draw()
 {
     for (int i = 0; i < meshes.size(); i++)
     {
+        MeshManager::Instance().Submit(meshes[i], material, transform.localToWorld());
         // if (meshes[i]->textures.size() == 0)
         //     shader->setUniform1i("uTextureSample", 0);
         // else
         //     shader->setUniform1i("uTextureSample", 1);
-        meshes[i]->draw(shader);
+        // meshes[i]->draw(shader);
     }
 }
 
@@ -119,7 +121,7 @@ void Model::processNode(aiNode *node, const aiScene *scene)
     for (int i = 0; i < node->mNumMeshes; i++)
     {
         aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
-        meshes.push_back(std::make_shared<Mesh>(mesh, scene, directory));
+        meshes.push_back(MeshManager::Instance().LoadMesh(mesh, scene, std::format("{}/{}_{}", std::string(directory), filename, meshes.size())));
         for (unsigned int b = 0; b < mesh->mNumBones; ++b)
         {
             aiBone *bone = mesh->mBones[b];

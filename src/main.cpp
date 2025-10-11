@@ -19,6 +19,7 @@
 #include "Input.h"
 #include "GlobalTime.h"
 #include "SceneManager.h"
+#include "MeshManager.h"
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
@@ -104,6 +105,20 @@ int main()
     std::cout << "OpenGL Renderer: " << glGetString(GL_RENDERER) << std::endl;
     std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
 
+    std::shared_ptr<Shader> shader = std::make_shared<Shader>(std::unordered_map<ShaderVariant, std::string>{
+        {ShaderVariant::Basic, Path(ROOT_DIR) + "assets/shader/transparent.shader"},
+        {ShaderVariant::Instanced, Path(ROOT_DIR) + "assets/shader/transparent_instanced.shader"}});
+
+    // shader.Use();
+    // shader.uniforms["color"] = {"vec4f",
+    //                             glm::vec4(2.0f / 255.0f, 163.0f / 255.0f, 218.0f / 255.0f, 0.3f)};
+
+    std::shared_ptr<Material> modelMaterial = std::make_shared<Material>(shader);
+    modelMaterial->SetUniform("color", "vec4f", glm::vec4(2.0f / 255.0f, 163.0f / 255.0f, 218.0f / 255.0f, 0.3f));
+
+    std::shared_ptr<Material> nodeMaterial = std::make_shared<Material>(shader);
+    nodeMaterial->SetUniform("color", "vec4f", glm::vec4(218.0f / 255.0f, 169.0f / 255.0f, 2.0f / 255.0f, 1.0f));
+
     SceneManager::SetCurrentScene(std::make_shared<Scene>());
     SceneManager::AddObject(SceneObject::create("Camera", "main camera"));
     SceneManager::AddObject(SceneObject::create("Model", "mesh13"));
@@ -112,6 +127,7 @@ int main()
         auto model = SceneManager::GetObject<Model>("mesh13");
         model->directory = Path(ROOT_DIR) + "/assets";
         model->filename = "mesh13_rigged.glb";
+        model->SetMaterial(modelMaterial);
         model->awake();
         model->printBoneInfo();
         model->initialize();
@@ -122,6 +138,7 @@ int main()
             auto nodeObj = std::dynamic_pointer_cast<Model>(SceneObject::create("Model", nodeNmae));
             nodeObj->directory = Path(ROOT_DIR) + "/assets";
             nodeObj->filename = "ico-sphere.obj";
+            nodeObj->SetMaterial(nodeMaterial);
             nodeObj->awake();
             nodeObj->transform.scale(Vector3(0.0002, 0.0002, 0.0002));
             nodeObj->transform.position(head);
@@ -130,22 +147,20 @@ int main()
         }
     }
 
-    Shader shader(Path(ROOT_DIR) + "assets/shader/transparent.shader");
-    shader.useProgram();
-    shader.uniforms["color"] = {"vec4f",
-                                glm::vec4(2.0f / 255.0f, 163.0f / 255.0f, 218.0f / 255.0f, 0.3f)};
-
     int ret = glfwWindowShouldClose(window);
     GlobalTime::Init();
     while (!ret)
     {
-        Event::events().clear();
         GlobalTime::UpdateLastFrameTime();
         GlobalTime::UpdateCurrentFrameTime();
         float deltaTime = GlobalTime::GetFrameDeltaTime();
         // std::cout << "Delta Time: " << deltaTime << " seconds." << std::endl;
 
         SceneManager::Update();
+
+        Event::events().clear();
+
+        SceneManager::Draw();
 
         glClearColor(1, 1, 1, 1);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -155,33 +170,35 @@ int main()
 
         auto camera = SceneManager::GetObject<Camera>("main camera");
 
-        auto model = SceneManager::GetObject<Model>("mesh13");
-        shader.setUniformMat4x4f("projection", 1, glm::value_ptr(camera->GetProjectionMatrix((float)WIDTH / (float)HEIGHT)));
-        shader.setUniformMat4x4f("view", 1, glm::value_ptr(camera->getViewMatrix()));
-        shader.setUniformMat4x4f("model", 1, glm::value_ptr(model->transform.localToWorld()));
-        shader.uniforms["color"] = {"vec4f",
-                                    glm::vec4(2.0f / 255.0f, 163.0f / 255.0f, 218.0f / 255.0f, 0.3f)};
-        shader.setUniforms();
-        model->draw(std::make_shared<Shader>(shader));
+        MeshManager::Instance().FlushBatches(camera->GetViewMatrix(), camera->GetProjectionMatrix((float)WIDTH / (float)HEIGHT));
 
-        for (auto it : model->bones)
-        {
-            auto [nodeNmae, _1, _2] = it;
-            auto nodeObj = SceneManager::GetObject<Model>(nodeNmae);
-            shader.setUniformMat4x4f("projection", 1, glm::value_ptr(camera->GetProjectionMatrix((float)WIDTH / (float)HEIGHT)));
-            shader.setUniformMat4x4f("view", 1, glm::value_ptr(camera->getViewMatrix()));
-            shader.setUniformMat4x4f("model", 1, glm::value_ptr(nodeObj->transform.localToWorld()));
-            shader.uniforms["color"] = {"vec4f",
-                                        glm::vec4(218.0f / 255.0f, 169.0f / 255.0f, 2.0f / 255.0f, 1.0f)};
-            shader.setUniforms();
-            nodeObj->draw(std::make_shared<Shader>(shader));
-        }
+        // auto model = SceneManager::GetObject<Model>("mesh13");
+        // shader.SetUniformMat4x4f("projection", camera->GetProjectionMatrix((float)WIDTH / (float)HEIGHT));
+        // shader.SetUniformMat4x4f("view", camera->GetViewMatrix());
+        // shader.SetUniformMat4x4f("model", model->transform.localToWorld());
+        // shader.uniforms["color"] = {"vec4f",
+        //                             glm::vec4(2.0f / 255.0f, 163.0f / 255.0f, 218.0f / 255.0f, 0.3f)};
+        // shader.SetUniforms();
+        // model->draw(std::make_shared<Shader>(shader));
+
+        // for (auto it : model->bones)
+        // {
+        //     auto [nodeNmae, _1, _2] = it;
+        //     auto nodeObj = SceneManager::GetObject<Model>(nodeNmae);
+        //     shader.SetUniformMat4x4f("projection", camera->GetProjectionMatrix((float)WIDTH / (float)HEIGHT));
+        //     shader.SetUniformMat4x4f("view", camera->GetViewMatrix());
+        //     shader.SetUniformMat4x4f("model", nodeObj->transform.localToWorld());
+        //     shader.uniforms["color"] = {"vec4f",
+        //                                 glm::vec4(218.0f / 255.0f, 169.0f / 255.0f, 2.0f / 255.0f, 1.0f)};
+        //     shader.SetUniforms();
+        //     nodeObj->draw(std::make_shared<Shader>(shader));
+        // }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    shader.deleteProgram();
+    shader->Delete();
     glfwTerminate();
     return 0;
 }

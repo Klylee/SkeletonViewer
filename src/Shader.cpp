@@ -116,9 +116,9 @@ unsigned int Shader::CompileShader(unsigned int type, const std::string &shader_
     return shader;
 }
 
-int Shader::getUnifromLocation(const std::string &label)
+int Shader::getUniformLocation(const std::string &label)
 {
-    int loc = glGetUniformLocation(program, label.c_str());
+    int loc = glGetUniformLocation(currentProgram, label.c_str());
     if (loc == -1)
     {
         std::cout << "get uniform location fail: \"" << label << "\"" << std::endl;
@@ -128,89 +128,97 @@ int Shader::getUnifromLocation(const std::string &label)
     return loc;
 }
 
-Shader::Shader(const std::string &shaderpath)
+Shader::Shader(const std::unordered_map<ShaderVariant, std::string> &shaderpaths)
 {
-    ShaderSourceString ss = PraseShaderSource(shaderpath);
+    for (const auto &[variant, path] : shaderpaths)
+    {
+        ShaderSourceString ss = PraseShaderSource(path);
 
-    program = glCreateProgram();
-    unsigned int vertex_shader = CompileShader(GL_VERTEX_SHADER, ss.vertex_source);
-    unsigned int fragment_shader = CompileShader(GL_FRAGMENT_SHADER, ss.fragment_source);
+        int program = glCreateProgram();
+        unsigned int vertex_shader = CompileShader(GL_VERTEX_SHADER, ss.vertex_source);
+        unsigned int fragment_shader = CompileShader(GL_FRAGMENT_SHADER, ss.fragment_source);
 
-    glAttachShader(program, vertex_shader);
-    glAttachShader(program, fragment_shader);
-    glLinkProgram(program);     // link the two shader together
-    glValidateProgram(program); // validate the program
+        glAttachShader(program, vertex_shader);
+        glAttachShader(program, fragment_shader);
+        glLinkProgram(program);     // link the two shader together
+        glValidateProgram(program); // validate the program
 
-    glDeleteShader(vertex_shader); // now we don't need the shader object
-    glDeleteShader(fragment_shader);
+        glDeleteShader(vertex_shader); // now we don't need the shader object
+        glDeleteShader(fragment_shader);
+
+        programs[variant] = program;
+    }
+    currentProgram = programs.at(ShaderVariant::Basic);
 }
 
-void Shader::useProgram()
+void Shader::Use(ShaderVariant variant)
 {
-    glUseProgram(program);
+    currentProgram = programs[variant];
+    glUseProgram(currentProgram);
 }
 
-void Shader::deleteProgram()
+void Shader::Delete()
 {
-    glDeleteProgram(program);
+    for (auto var : programs)
+        glDeleteProgram(var.second);
 }
 
-void Shader::setUniform1f(const std::string &label, float v)
+void Shader::SetUniform1f(const std::string &label, float v)
 {
-    int loc = getUnifromLocation(label);
+    int loc = getUniformLocation(label);
     if (loc >= 0)
         glUniform1f(loc, v);
 }
 
-void Shader::setUniform1i(const std::string &label, int v)
+void Shader::SetUniform1i(const std::string &label, int v)
 {
-    int loc = getUnifromLocation(label);
+    int loc = getUniformLocation(label);
     if (loc >= 0)
         glUniform1i(loc, v);
 }
 
-void Shader::setUniformVec3f(const std::string &label, float v1, float v2, float v3)
+void Shader::SetUniformVec3f(const std::string &label, float v1, float v2, float v3)
 {
-    int loc = getUnifromLocation(label);
+    int loc = getUniformLocation(label);
     if (loc >= 0)
         glUniform3f(loc, v1, v2, v3);
 }
 
-void Shader::setUniformVec3i(const std::string &label, int v1, int v2, int v3)
+void Shader::SetUniformVec3i(const std::string &label, int v1, int v2, int v3)
 {
-    int loc = getUnifromLocation(label);
+    int loc = getUniformLocation(label);
     if (loc >= 0)
         glUniform3i(loc, v1, v2, v3);
 }
 
-void Shader::setUniformVec4f(const std::string &label, float v1, float v2, float v3, float v4)
+void Shader::SetUniformVec4f(const std::string &label, float v1, float v2, float v3, float v4)
 {
-    int loc = getUnifromLocation(label);
+    int loc = getUniformLocation(label);
     if (loc >= 0)
         glUniform4f(loc, v1, v2, v3, v4);
 }
 
-void Shader::setUniformVec4i(const std::string &label, int v1, int v2, int v3, int v4)
+void Shader::SetUniformVec4i(const std::string &label, int v1, int v2, int v3, int v4)
 {
-    int loc = getUnifromLocation(label);
+    int loc = getUniformLocation(label);
     if (loc >= 0)
         glUniform4i(loc, v1, v2, v3, v4);
 }
 
-void Shader::setUniformMat4x4f(const std::string &label, int matCount, const float *value)
+void Shader::SetUniformMat4x4f(const std::string &label, const glm::mat4 &mat)
 {
-    int loc = getUnifromLocation(label);
+    int loc = getUniformLocation(label);
     if (loc >= 0)
-        glUniformMatrix4fv(loc, matCount, GL_FALSE, value);
+        glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(mat));
 }
 
-void Shader::setUniforms()
+void Shader::SetUniforms(const std::unordered_map<std::string, std::pair<std::string, std::any>> &uniforms)
 {
-    glUseProgram(program);
+    glUseProgram(currentProgram);
     for (const auto &[name, typeAndValue] : uniforms)
     {
         const auto &[type, value] = typeAndValue;
-        auto loc = getUnifromLocation(name);
+        auto loc = getUniformLocation(name);
         auto it = uniformSetters.find(type);
         if (it != uniformSetters.end())
         {

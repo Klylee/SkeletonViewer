@@ -5,8 +5,9 @@
 #endif
 
 #include <GL/glew.h>
-#include "stb_image.h"
+#include <stb_image.h>
 #include <iostream>
+#include <glm/glm.hpp>
 
 Texture::Texture(const std::string &dict, const std::string &file, TextureType type) : texid(0), type(type)
 {
@@ -52,7 +53,8 @@ void Texture::unbind()
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-Mesh::Mesh(aiMesh *mesh, const aiScene *scence, const std::string &dict) : vertices(nullptr), indices(nullptr)
+Mesh::Mesh(aiMesh *mesh, const aiScene *scence, const std::string &dict)
+    : vertices(nullptr), indices(nullptr), vao(0), vbo(0), ibo(0), instanceVBO(0)
 {
     v_size = mesh->mNumVertices * 8;
     i_size = mesh->mNumFaces * 3;
@@ -162,7 +164,7 @@ void Mesh::draw(std::shared_ptr<Shader> shader)
         textures[i].bind(i + 1);
         if (textures[i].type == TextureType::DIFFUSE)
         {
-            shader->setUniform1i(("utexture_diffuse" + std::to_string(count)).c_str(), i + 1);
+            shader->SetUniform1i(("utexture_diffuse" + std::to_string(count)).c_str(), i + 1);
             count++;
         }
     }
@@ -177,7 +179,37 @@ void Mesh::draw(std::shared_ptr<Shader> shader)
     }
 }
 
-std::shared_ptr<Mesh> Mesh::makeCubeMesh()
+void Mesh::drawInstanced(const std::shared_ptr<Shader> &shader,
+                         const std::vector<glm::mat4> &modelMatrices)
 {
-    return std::shared_ptr<Mesh>();
+    // 如果未创建 instance buffer，则创建
+    if (instanceVBO == 0)
+    {
+        glGenBuffers(1, &instanceVBO);
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+        glBufferData(GL_ARRAY_BUFFER, modelMatrices.size() * sizeof(glm::mat4),
+                     modelMatrices.data(), GL_DYNAMIC_DRAW);
+
+        // 为 mat4 分配 4 个顶点属性位置
+        for (int i = 0; i < 4; i++)
+        {
+            glEnableVertexAttribArray(3 + i);
+            glVertexAttribPointer(3 + i, 4, GL_FLOAT, GL_FALSE,
+                                  sizeof(glm::mat4), (void *)(sizeof(glm::vec4) * i));
+            glVertexAttribDivisor(3 + i, 1);
+        }
+
+        glBindVertexArray(0);
+    }
+    else
+    {
+        glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, modelMatrices.size() * sizeof(glm::mat4),
+                        modelMatrices.data());
+    }
+
+    glBindVertexArray(vao);
+    glDrawElementsInstanced(GL_TRIANGLES, i_size, GL_UNSIGNED_INT, 0, modelMatrices.size());
+    glBindVertexArray(0);
 }

@@ -7,6 +7,7 @@
 #include <fstream>
 #include <unordered_map>
 #include <any>
+#include <glm/glm.hpp>
 
 struct ShaderSourceString
 {
@@ -14,32 +15,38 @@ struct ShaderSourceString
     std::string fragment_source;
 };
 
+enum class ShaderVariant
+{
+    Basic,
+    Instanced,
+    Shadow
+};
+
 class Shader
 {
+    std::unordered_map<ShaderVariant, unsigned int> programs;
+    unsigned int currentProgram = 0;
+
     ShaderSourceString PraseShaderSource(const std::string &file);
     unsigned int CompileShader(unsigned int type, const std::string &shader_source);
 
-    int getUnifromLocation(const std::string &label);
+    int getUniformLocation(const std::string &label);
 
 public:
-    unsigned int program;
+    Shader(const std::unordered_map<ShaderVariant, std::string> &shaderpaths);
 
-    std::unordered_map<std::string, std::pair<std::string, std::any>> uniforms;
+    void Use(ShaderVariant variant = ShaderVariant::Basic);
+    void Delete();
 
-    Shader(const std::string &shaderpath);
+    void SetUniform1f(const std::string &label, float v);
+    void SetUniform1i(const std::string &label, int v);
+    void SetUniformVec3f(const std::string &label, float v1, float v2, float v3);
+    void SetUniformVec3i(const std::string &label, int v1, int v2, int v3);
+    void SetUniformVec4f(const std::string &label, float v1, float v2, float v3, float v4);
+    void SetUniformVec4i(const std::string &label, int v1, int v2, int v3, int v4);
+    void SetUniformMat4x4f(const std::string &label, const glm::mat4 &mat);
 
-    void useProgram();
-    void deleteProgram();
-
-    void setUniform1f(const std::string &label, float v);
-    void setUniform1i(const std::string &label, int v);
-    void setUniformVec3f(const std::string &label, float v1, float v2, float v3);
-    void setUniformVec3i(const std::string &label, int v1, int v2, int v3);
-    void setUniformVec4f(const std::string &label, float v1, float v2, float v3, float v4);
-    void setUniformVec4i(const std::string &label, int v1, int v2, int v3, int v4);
-    void setUniformMat4x4f(const std::string &label, int matCount, const float *value);
-
-    void setUniforms();
+    void SetUniforms(const std::unordered_map<std::string, std::pair<std::string, std::any>> &uniforms);
 };
 
 #endif // SHADER_H

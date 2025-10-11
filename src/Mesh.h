@@ -5,6 +5,7 @@
 #include <assimp/scene.h>
 #include <vector>
 #include <memory>
+#include <glm/glm.hpp>
 
 enum TextureType
 {
@@ -38,12 +39,14 @@ public:
     unsigned int vao;
     unsigned int vbo;
     unsigned int ibo;
+    unsigned int instanceVBO;
 
-    Mesh() {}
+    Mesh() : v_size(0), i_size(0), vertices(nullptr), indices(nullptr), vao(0), vbo(0), ibo(0), instanceVBO(0) {}
     Mesh(aiMesh *mesh, const aiScene *scence, const std::string &dict);
     ~Mesh();
     void initialize();
     void draw(std::shared_ptr<Shader> shader);
 
-    static std::shared_ptr<Mesh> makeCubeMesh();
+    void drawInstanced(const std::shared_ptr<Shader> &shader,
+                       const std::vector<glm::mat4> &modelMatrices);
 };

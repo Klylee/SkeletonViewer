@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <map>
+#include <functional>
 #include "Vec.h"
 #include "ParseArg.h"
 

@@ -15,7 +15,7 @@ std::shared_ptr<Mesh> MeshManager::LoadMesh(const std::string &path, const std::
 
     // 从文件加载
     auto mesh = std::make_shared<Mesh>(nullptr, nullptr, dict);
-    // TODO: 这里你可能会有一个外部的MeshLoader::Load()去解析模型文件
+    // TODO: 外部的MeshLoader::Load()去解析模型文件
     // mesh = MeshLoader::Load(absPath, dict);
 
     meshCache[absPath] = mesh;

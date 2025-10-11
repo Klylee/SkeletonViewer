@@ -109,10 +109,6 @@ int main()
         {ShaderVariant::Basic, Path(ROOT_DIR) + "assets/shader/transparent.shader"},
         {ShaderVariant::Instanced, Path(ROOT_DIR) + "assets/shader/transparent_instanced.shader"}});
 
-    // shader.Use();
-    // shader.uniforms["color"] = {"vec4f",
-    //                             glm::vec4(2.0f / 255.0f, 163.0f / 255.0f, 218.0f / 255.0f, 0.3f)};
-
     std::shared_ptr<Material> modelMaterial = std::make_shared<Material>(shader);
     modelMaterial->SetUniform("color", "vec4f", glm::vec4(2.0f / 255.0f, 163.0f / 255.0f, 218.0f / 255.0f, 0.3f));
 
@@ -171,28 +167,6 @@ int main()
         auto camera = SceneManager::GetObject<Camera>("main camera");
 
         MeshManager::Instance().FlushBatches(camera->GetViewMatrix(), camera->GetProjectionMatrix((float)WIDTH / (float)HEIGHT));
-
-        // auto model = SceneManager::GetObject<Model>("mesh13");
-        // shader.SetUniformMat4x4f("projection", camera->GetProjectionMatrix((float)WIDTH / (float)HEIGHT));
-        // shader.SetUniformMat4x4f("view", camera->GetViewMatrix());
-        // shader.SetUniformMat4x4f("model", model->transform.localToWorld());
-        // shader.uniforms["color"] = {"vec4f",
-        //                             glm::vec4(2.0f / 255.0f, 163.0f / 255.0f, 218.0f / 255.0f, 0.3f)};
-        // shader.SetUniforms();
-        // model->draw(std::make_shared<Shader>(shader));
-
-        // for (auto it : model->bones)
-        // {
-        //     auto [nodeNmae, _1, _2] = it;
-        //     auto nodeObj = SceneManager::GetObject<Model>(nodeNmae);
-        //     shader.SetUniformMat4x4f("projection", camera->GetProjectionMatrix((float)WIDTH / (float)HEIGHT));
-        //     shader.SetUniformMat4x4f("view", camera->GetViewMatrix());
-        //     shader.SetUniformMat4x4f("model", nodeObj->transform.localToWorld());
-        //     shader.uniforms["color"] = {"vec4f",
-        //                                 glm::vec4(218.0f / 255.0f, 169.0f / 255.0f, 2.0f / 255.0f, 1.0f)};
-        //     shader.SetUniforms();
-        //     nodeObj->draw(std::make_shared<Shader>(shader));
-        // }
 
         glfwSwapBuffers(window);
         glfwPollEvents();

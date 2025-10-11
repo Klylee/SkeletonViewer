@@ -9,14 +9,12 @@
 class MeshManager
 {
 public:
-    // 获取单例
     static MeshManager &Instance()
     {
         static MeshManager instance;
         return instance;
     }
 
-    // 禁止拷贝
     MeshManager(const MeshManager &) = delete;
     MeshManager &operator=(const MeshManager &) = delete;
 
@@ -29,7 +27,7 @@ public:
     // 根据唯一key（例如path或hash）获取已存在mesh
     std::shared_ptr<Mesh> Get(const std::string &key);
 
-    // 提交绘制请求（每个 SceneObject 的 Draw 调用时触发）
+    // 提交绘制请求(需要绘制的SceneObject在Draw里面调用）
     void Submit(const std::shared_ptr<Mesh> &mesh,
                 const std::shared_ptr<Material> &material,
                 const glm::mat4 &modelMatrix);
@@ -46,7 +44,7 @@ public:
 private:
     MeshManager() = default;
 
-    // 用于缓存mesh资源
+    // 缓存mesh资源
     std::unordered_map<std::string, std::shared_ptr<Mesh>> meshCache;
 
     struct RenderInstance

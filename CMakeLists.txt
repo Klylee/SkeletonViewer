@@ -12,6 +12,21 @@ configure_file(config.h.in ${CMAKE_BINARY_DIR}/config.h @ONLY)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
+# --------------------- ImGUI --------------------------------------------------
+add_library(imgui
+    ${CMAKE_SOURCE_DIR}/include/imgui/imgui.cpp
+    ${CMAKE_SOURCE_DIR}/include/imgui/imgui_draw.cpp
+    ${CMAKE_SOURCE_DIR}/include/imgui/imgui_tables.cpp
+    ${CMAKE_SOURCE_DIR}/include/imgui/imgui_widgets.cpp
+    ${CMAKE_SOURCE_DIR}/include/imgui/backends/imgui_impl_glfw.cpp
+    ${CMAKE_SOURCE_DIR}/include/imgui/backends/imgui_impl_opengl3.cpp
+)
+target_include_directories(imgui PUBLIC
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include/imgui
+    ${CMAKE_SOURCE_DIR}/include/imgui/backends
+)
+
 # ------------------------------------------------------------------------------
 # 头文件路径（GLFW + GLEW 在项目 include）
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -42,14 +57,16 @@ if (MSVC)
         glfw3dll
         glew32.dll
         assimp-vc143-mtd.dll
+        imgui
     )
 elseif (MINGW)
     target_link_libraries(${PROJECT_NAME}
         PRIVATE
         opengl32
-        glfw3dll
+        glfw3dll                                                                                                                                                                  
         glew32.dll
         assimp.dll
+        imgui
     )
 endif()
 

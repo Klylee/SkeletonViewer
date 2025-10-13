@@ -49,6 +49,8 @@ struct SceneObject
     std::string objName;
     Transform transform;
 
+    bool active = true;
+
     SceneObject() : transform() {}
     virtual ~SceneObject() = default;
     virtual void awake() {}

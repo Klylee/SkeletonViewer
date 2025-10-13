@@ -31,6 +31,7 @@ std::shared_ptr<Mesh> MeshManager::LoadMesh(aiMesh *mesh, const aiScene *scene, 
         return it->second;
 
     auto newMesh = std::make_shared<Mesh>(mesh, scene, dict);
+    newMesh->initialize();
     meshCache[key] = newMesh;
     return newMesh;
 }
@@ -88,6 +89,8 @@ void MeshManager::FlushBatches(const glm::mat4 &viewMatrix, const glm::mat4 &pro
 
     std::shared_ptr<Shader> currentShader = nullptr;
 
+    // std::cout << sortedBatches.size() << std::endl;
+
     for (auto &batch : sortedBatches)
     {
         auto &mesh = batch.mesh;
@@ -115,11 +118,14 @@ void MeshManager::FlushBatches(const glm::mat4 &viewMatrix, const glm::mat4 &pro
         }
         else
         {
+            // std::cout << "Drawing " << instances->size() << " instances of mesh." << std::endl;
             // 实例化渲染
             std::vector<glm::mat4> modelMatrices;
             modelMatrices.reserve(instances->size());
             for (auto &inst : *instances)
+            {
                 modelMatrices.push_back(inst.modelMatrix);
+            }
             mesh->drawInstanced(currentShader, modelMatrices);
         }
     }

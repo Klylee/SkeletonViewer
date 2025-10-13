@@ -205,8 +205,34 @@ void Mesh::drawInstanced(const std::shared_ptr<Shader> &shader,
     else
     {
         glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, modelMatrices.size() * sizeof(glm::mat4),
-                        modelMatrices.data());
+        // 查询当前分配的大小
+        GLint currentSize = 0;
+        glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &currentSize);
+        GLsizeiptr requiredSize = modelMatrices.size() * sizeof(glm::mat4);
+
+        if (requiredSize > currentSize)
+        {
+            // 重新分配（容量不够）
+            glDeleteBuffers(1, &instanceVBO);
+            glGenBuffers(1, &instanceVBO);
+            glBindVertexArray(vao);
+            glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+            glBufferData(GL_ARRAY_BUFFER, requiredSize, modelMatrices.data(), GL_DYNAMIC_DRAW);
+
+            for (int i = 0; i < 4; i++)
+            {
+                glEnableVertexAttribArray(3 + i);
+                glVertexAttribPointer(3 + i, 4, GL_FLOAT, GL_FALSE,
+                                      sizeof(glm::mat4), (void *)(sizeof(glm::vec4) * i));
+                glVertexAttribDivisor(3 + i, 1);
+            }
+
+            glBindVertexArray(0);
+        }
+        else
+        {
+            glBufferSubData(GL_ARRAY_BUFFER, 0, requiredSize, modelMatrices.data());
+        }
     }
 
     glBindVertexArray(vao);

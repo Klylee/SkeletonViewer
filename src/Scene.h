@@ -18,6 +18,7 @@ public:
 
         sceneObjects.push_back(obj);
         sceneObjectMap[obj->objName] = obj;
+        std::cout << "Added " << "<" << obj->className << ">" << obj->objName << std::endl;
     }
 
     // 通过名字查找对象
@@ -61,7 +62,7 @@ public:
     {
         for (auto &obj : sceneObjects)
         {
-            if (obj)
+            if (obj && obj->active)
                 obj->update();
         }
     }
@@ -70,7 +71,7 @@ public:
     {
         for (auto &obj : sceneObjects)
         {
-            if (obj)
+            if (obj && obj->active)
                 obj->draw();
         }
     }

@@ -26,9 +26,15 @@ public:
     // angle: deg
     Vector3 eulerAngles() const;
 
-    // angle: deg
+    // 设定旋转角度，不累加，angle: deg
     void eulerAngles(Vector3 eulerangle);
+
+    // 设定旋转角度，不累加，angle: deg
     void eulerAngles(float yaw, float pitch, float roll);
+
+    // 从originDir旋转到targetDir，均为单位向量，不累加
+    void rotate(Vector3 originDir, Vector3 targetDir);
+
     Vector3 scale() const;
     void scale(Vector3 scale);
     glm::mat4 localToWorld() const;

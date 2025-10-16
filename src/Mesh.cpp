@@ -56,6 +56,8 @@ void Texture::unbind()
 Mesh::Mesh(aiMesh *mesh, const aiScene *scence, const std::string &dict)
     : vertices(nullptr), indices(nullptr), vao(0), vbo(0), ibo(0), instanceVBO(0)
 {
+    v_num = mesh->mNumVertices;
+    i_num = mesh->mNumFaces * 3;
     v_size = mesh->mNumVertices * 8;
     i_size = mesh->mNumFaces * 3;
     vertices = new float[v_size];
@@ -87,6 +89,7 @@ Mesh::Mesh(aiMesh *mesh, const aiScene *scence, const std::string &dict)
             std::cout << "error happened when initialize vertices" << std::endl;
         }
     }
+
     for (int i = 0; i < mesh->mNumFaces; i++)
     {
         aiFace face = mesh->mFaces[i];

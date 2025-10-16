@@ -13,7 +13,7 @@ public:
 	float fieldView = 45.0f;
 	float nearPlane = 0.001f;
 	float farPlane = 100.0f;
-	float speed = 0.04f;
+	float speed = 0.1f;
 
 	float yaw = 0.0f;
 	float pitch = 0.0f;

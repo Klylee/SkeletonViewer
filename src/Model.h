@@ -14,11 +14,9 @@ public:
 
     std::shared_ptr<Material> material;
     std::vector<std::shared_ptr<Mesh>> meshes;
-    std::vector<std::tuple<std::string, Vector3, Vector3>> bones; // name, head, tail
+    std::unordered_map<std::string, std::tuple<Vector3, Vector3, std::string>> bones; // name-> <head, tail, parentName>
 
     ~Model() override;
-
-    void initialize();
 
     void awake() override;
     void update() override {}
@@ -28,7 +26,14 @@ public:
     std::string info();
     void printBoneInfo();
 
+    // add bone nodes to scene, visualize with nodeMaterial
+    void AddBoneNodes(const std::shared_ptr<Material> &nodeMaterial, const std::shared_ptr<Material> &linkMaterial);
+
     void processNode(aiNode *node, const aiScene *scene);
     Path directory;
     std::string filename;
+
+    bool normalizeMesh = false;
+    Vector3 globalCenter = Vector3(0.0f);;
+    float globalScale = 1.0f;
 };

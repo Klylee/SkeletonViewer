@@ -5,6 +5,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include "MeshManager.h"
+#include "SceneManager.h"
 
 aiMatrix4x4 GetGlobalTransform(aiNode *node)
 {
@@ -67,16 +68,74 @@ void Model::awake()
         return;
     }
     processNode(scene->mRootNode, scene);
+
+    // if needing to normalize the whole model
+    if (normalizeMesh)
+    {
+        // 第一步：计算所有mesh的全局边界
+        float globalMinX = std::numeric_limits<float>::max();
+        float globalMaxX = std::numeric_limits<float>::lowest();
+        float globalMinY = std::numeric_limits<float>::max();
+        float globalMaxY = std::numeric_limits<float>::lowest();
+        float globalMinZ = std::numeric_limits<float>::max();
+        float globalMaxZ = std::numeric_limits<float>::lowest();
+
+        // 计算所有mesh的全局边界
+        for (auto &mesh : meshes)
+        {
+            float minX = mesh->vertices[0], maxX = mesh->vertices[0];
+            float minY = mesh->vertices[1], maxY = mesh->vertices[1];
+            float minZ = mesh->vertices[2], maxZ = mesh->vertices[2];
+
+            #pragma omp parallel for reduction(min:minX,minY,minZ) reduction(max:maxX,maxY,maxZ)
+            for (int i = 1; i < mesh->v_num; i++)
+            {
+                float x = mesh->vertices[i * 8 + 0];
+                float y = mesh->vertices[i * 8 + 1];
+                float z = mesh->vertices[i * 8 + 2];
+
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+                if (z < minZ) minZ = z;
+                if (z > maxZ) maxZ = z;
+            }
+
+            // 更新全局边界
+            #pragma omp critical
+            {
+                if (minX < globalMinX) globalMinX = minX;
+                if (maxX > globalMaxX) globalMaxX = maxX;
+                if (minY < globalMinY) globalMinY = minY;
+                if (maxY > globalMaxY) globalMaxY = maxY;
+                if (minZ < globalMinZ) globalMinZ = minZ;
+                if (maxZ > globalMaxZ) globalMaxZ = maxZ;
+            }
+        }
+
+        // 计算全局的中心点和缩放因子
+        float globalCenterX = (globalMinX + globalMaxX) / 2.0f;
+        float globalCenterY = (globalMinY + globalMaxY) / 2.0f;
+        float globalCenterZ = (globalMinZ + globalMaxZ) / 2.0f;
+        globalCenter = Vector3(globalCenterX, globalCenterY, globalCenterZ);
+        globalScale = std::max({globalMaxX - globalMinX, globalMaxY - globalMinY, globalMaxZ - globalMinZ});
+        
+        // 避免除零
+        if (globalScale < 1e-6f) {
+            globalScale = 1.0f;
+        } else {
+            globalScale = 1.0f / globalScale;
+        }
+
+        // 更改model的transform
+        transform.position(-globalCenter * globalScale);
+        transform.scale(Vector3(globalScale));
+    }
 }
 
 Model::~Model()
 {
-}
-
-void Model::initialize()
-{
-    for (int i = 0; i < meshes.size(); i++)
-        meshes[i]->initialize();
 }
 
 void Model::draw()
@@ -84,11 +143,6 @@ void Model::draw()
     for (int i = 0; i < meshes.size(); i++)
     {
         MeshManager::Instance().Submit(meshes[i], material, transform.localToWorld());
-        // if (meshes[i]->textures.size() == 0)
-        //     shader->setUniform1i("uTextureSample", 0);
-        // else
-        //     shader->setUniform1i("uTextureSample", 1);
-        // meshes[i]->draw(shader);
     }
 }
 
@@ -109,10 +163,60 @@ std::string Model::info()
 void Model::printBoneInfo()
 {
     std::cout << "Bone Count: " << bones.size() << std::endl;
-    for (const auto &[name, head, tail] : bones)
+    for (const auto &[name, headAndTail] : bones)
     {
+        auto [head, tail, parentName] = headAndTail;
         std::cout << name << ": Head(" << head.x << ", " << head.y << ", " << head.z << ") "
-                  << "Tail(" << tail.x << ", " << tail.y << ", " << tail.z << ")" << std::endl;
+                  << "Tail(" << tail.x << ", " << tail.y << ", " << tail.z << ")"
+                  << "Parent: " << parentName << std::endl;
+    }
+}
+
+void Model::AddBoneNodes(const std::shared_ptr<Material> &nodeMaterial, const std::shared_ptr<Material> &linkMaterial)
+{
+    for (auto it : bones)
+    {
+        auto [nodeNmae, headAndTail] = it;
+        auto [head, tail, parentName] = headAndTail;
+        auto nodeObj = std::dynamic_pointer_cast<Model>(SceneObject::create("Model", filename + "_" + nodeNmae));
+        nodeObj->directory = Path(ROOT_DIR) + "/assets";
+        nodeObj->filename = "ico-sphere.obj";
+        nodeObj->SetMaterial(nodeMaterial);
+        nodeObj->awake();
+        nodeObj->transform.scale(Vector3(0.01f));
+        nodeObj->transform.position((head - globalCenter) * globalScale);
+        SceneManager::AddObject(nodeObj);
+        children.push_back(nodeObj);
+
+        if (!parentName.empty() && bones.find(parentName) != bones.end())
+        {
+            auto parentHead = std::get<0>(bones[parentName]);
+            auto linkObj = std::dynamic_pointer_cast<Model>(SceneObject::create("Model", filename + "_" + parentName + "-" + nodeNmae));
+            linkObj->directory = Path(ROOT_DIR) + "/assets";
+            linkObj->filename = "cone.obj";
+            linkObj->SetMaterial(linkMaterial);
+            linkObj->awake();
+
+            Vector3 direction = glm::normalize(head - parentHead);
+            float length = glm::distance(head, parentHead);
+            
+            // 计算圆锥体的缩放
+            // cone.obj原始高度为2，所以需要缩放为实际骨骼长度的一半
+            float heightScale = length / 2.0f;
+            // 半径可以根据需要调整，这里设为高度的1/10
+            float radiusScale = heightScale * 0.1f;
+            glm::vec3 coneScale = glm::vec3(radiusScale, heightScale, radiusScale);
+            linkObj->transform.scale(coneScale * globalScale);
+
+            //计算旋转
+            glm::vec3 originalDirection(0.0f, 1.0f, 0.f); // cone.obj原始朝向（高度方向）
+            linkObj->transform.rotate(originalDirection, direction);
+
+            //计算位置
+            linkObj->transform.position((parentHead - globalCenter) * globalScale);
+            SceneManager::AddObject(linkObj);
+            children.push_back(linkObj);
+        }
     }
 }
 
@@ -129,7 +233,15 @@ void Model::processNode(aiNode *node, const aiScene *scene)
             if (!node)
                 continue;
 
-            bones.push_back({bone->mName.C_Str(), GetHead(node), GetBoneTailExact(node)});
+            if (node->mParent)
+            {
+                std::string parentName = node->mParent->mName.C_Str();
+                bones[bone->mName.C_Str()] = {GetHead(node), GetBoneTailExact(node), parentName};
+            }
+            else
+            {
+                bones[bone->mName.C_Str()] = {GetHead(node), GetBoneTailExact(node), ""};
+            }
         }
     }
     for (int i = 0; i < node->mNumChildren; i++)

@@ -15,6 +15,9 @@ public:
     {
         if (!obj)
             return;
+        
+        if (sceneObjectMap.find(obj->objName) != sceneObjectMap.end())
+            return;
 
         sceneObjects.push_back(obj);
         sceneObjectMap[obj->objName] = obj;
@@ -38,7 +41,7 @@ public:
         return std::dynamic_pointer_cast<T>(basePtr);
     }
 
-    // 移除对象
+    // 移除对象和它的子对象
     void Remove(const std::string &name)
     {
         auto it = sceneObjectMap.find(name);
@@ -47,6 +50,10 @@ public:
             auto target = it->second.lock();
             if (target)
             {
+                for (auto &child : target->children)
+                {
+                    Remove(child->objName);
+                }
                 sceneObjects.erase(
                     std::remove_if(sceneObjects.begin(), sceneObjects.end(),
                                    [&](auto &o)
@@ -54,6 +61,7 @@ public:
                     sceneObjects.end());
             }
             sceneObjectMap.erase(it);
+            std::cout << "Removed " << "<" << target->className << ">" << name << std::endl;
         }
     }
 

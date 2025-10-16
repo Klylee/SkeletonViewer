@@ -32,6 +32,8 @@ class Mesh
 public:
     int v_size;
     int i_size;
+    int v_num;
+    int i_num;
     float *vertices;
     unsigned int *indices;
     std::vector<Texture> textures;

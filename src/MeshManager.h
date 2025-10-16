@@ -1,4 +1,5 @@
 #pragma once
+#include <iostream>
 #include <string>
 #include <unordered_map>
 #include <memory>
@@ -35,6 +36,36 @@ public:
     // 执行所有批次绘制
     void FlushBatches(const glm::mat4 &viewMatrix, const glm::mat4 &projMatrix);
 
+    //定期清除没用的mesh
+    void CleanupUnusedMeshes(int keepFrames = 300) { // 保持300帧（约5秒）
+        currentFrame++;
+        
+        for (auto it = meshCache.begin(); it != meshCache.end(); ) {
+            const std::string key = it->first;
+            std::shared_ptr<Mesh>& mesh = it->second;
+            
+            // 检查是否长时间未使用且引用计数为1（只有cache持有）
+            if (mesh.use_count() == 1)
+            {
+                if (currentFrame - meshLastUsedFrame[key] > keepFrames) 
+                {
+                    std::cout << "Cleaning up unused mesh: " << key << std::endl;
+                    it = meshCache.erase(it);
+                    meshLastUsedFrame.erase(key);
+                }
+                else 
+                {
+                    ++it;
+                }
+            } 
+            else 
+            {
+                meshLastUsedFrame[key] = currentFrame;
+                ++it;
+            }
+        }
+    }
+
     // 清除所有资源（例如场景切换）
     void Clear();
 
@@ -46,6 +77,18 @@ private:
 
     // 缓存mesh资源
     std::unordered_map<std::string, std::shared_ptr<Mesh>> meshCache;
+    std::unordered_map<std::string, int> meshLastUsedFrame;
+    int currentFrame = 0;
+
+    // 检查batches中是否包含某个mesh
+    bool batchesContainsMesh(const std::shared_ptr<Mesh>& mesh) {
+        for (const auto& [batchKey, instances] : batches) {
+            if (batchKey.mesh == mesh) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     struct RenderInstance
     {

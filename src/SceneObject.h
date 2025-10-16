@@ -48,14 +48,23 @@ struct SceneObject
     std::string className;
     std::string objName;
     Transform transform;
-
     bool active = true;
+    std::vector<std::shared_ptr<SceneObject>> children;
 
     SceneObject() : transform() {}
     virtual ~SceneObject() = default;
+
     virtual void awake() {}
     virtual void update() {}
     virtual void draw() {}
+    virtual void SetActive(bool isActive)
+    {
+        active = isActive;
+        for (auto &child : children)
+        {
+            child->SetActive(isActive);
+        }
+    }
 
     operator std::string() const { return "<" + className + ">" + objName + "</" + className + ">"; }
 

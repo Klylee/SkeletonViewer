@@ -144,6 +144,12 @@ void MeshManager::PrintStatus() const
     std::cout << "[MeshManager] Loaded meshes: " << meshCache.size() << std::endl;
     for (auto &[key, val] : meshCache)
     {
-        std::cout << " - " << key << std::endl;
+        int lastUsedFrame;
+        try {
+            lastUsedFrame = meshLastUsedFrame.at(key);
+        } catch (const std::out_of_range&) {
+            lastUsedFrame = -1;
+        }
+        std::cout << " - " << key << " (use_count=" << val.use_count() << ")" << " LastUsed: " << lastUsedFrame << std::endl;
     }
 }

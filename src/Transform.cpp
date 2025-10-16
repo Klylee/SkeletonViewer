@@ -1,4 +1,5 @@
 #include "Transform.h"
+#include <glm/gtx/quaternion.hpp>
 
 Vector3 Transform::position() const
 {
@@ -56,5 +57,12 @@ void Transform::eulerAngles(float yaw, float pitch, float roll)
     Vector3 eulerangle(pitch, yaw, roll);
     _eulerAngles = eulerangle;
     _rotation = glm::qua<float>(glm::radians(_eulerAngles));
+    calcuLToW();
+}
+
+void Transform::rotate(Vector3 originDir, Vector3 targetDir)
+{
+    _rotation = glm::rotation(originDir, targetDir);
+    _eulerAngles = glm::degrees(glm::eulerAngles(_rotation));
     calcuLToW();
 }

@@ -24,10 +24,47 @@
 #include "SceneManager.h"
 #include "MeshManager.h"
 
+
+std::string currentModel = "";
+std::vector<std::string> droppedFiles;
+std::unordered_map<std::string, std::shared_ptr<Material>> materials;
+
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     if (action == GLFW_PRESS || action == GLFW_REPEAT)
     {
+        if (key == GLFW_KEY_P)
+        {
+            MeshManager::Instance().PrintStatus();
+        }
+        else if (key == GLFW_KEY_DELETE)
+        {
+            // delete current model
+            if (currentModel != "")
+            {
+                auto model = SceneManager::GetObject<Model>(currentModel);
+                if (model)
+                {
+                    SceneManager::Remove(currentModel);
+                }
+
+                droppedFiles.erase(std::remove(droppedFiles.begin(), droppedFiles.end(), currentModel), droppedFiles.end());
+
+                if (!droppedFiles.empty())
+                {
+                    currentModel = droppedFiles.back();
+                    auto model = SceneManager::GetObject<Model>(currentModel);
+                    if (model)
+                    {
+                        model->SetActive(true);
+                    }
+                }
+                else
+                {
+                    currentModel = "";
+                }
+            }
+        }
         Event::events().push_back(std::make_shared<Event::KeyPressedEvent>(key));
     }
     else if (action == GLFW_RELEASE)
@@ -70,12 +107,15 @@ void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
     Event::events().push_back(e);
 }
 
-static std::vector<std::string> droppedFiles;
-static std::unordered_map<std::string, std::shared_ptr<Material>> materials;
-std::string currentModel = "";
 void AddDroppedFileToScene(const std::string &filepath)
 {
     Path filepathObj = Path(filepath);
+    std::string ext = filepathObj.extension();
+    if (ext != "obj" && ext != "glb")
+    {
+        std::cout << "Only .obj and .glb files are supported." << std::endl;
+        return;
+    }
 
     if (SceneManager::GetObject<Model>(filepathObj.filename()))
     {
@@ -83,7 +123,7 @@ void AddDroppedFileToScene(const std::string &filepath)
         return;
     }
 
-    droppedFiles.push_back(filepath);
+    droppedFiles.push_back(filepathObj.filename());
 
     if (currentModel == "")
     {
@@ -94,15 +134,9 @@ void AddDroppedFileToScene(const std::string &filepath)
         auto model = SceneManager::GetObject<Model>(currentModel);
         if (model)
         {
-            model->active = false;
-            for (auto it : model->bones)
-            {
-                auto [nodeNmae, head, tail] = it;
-                auto nodeObj = SceneManager::GetObject<Model>(model->objName + nodeNmae);
-                if (nodeObj)
-                    nodeObj->active = false;
-            }
+            model->SetActive(false);
         }
+        currentModel = filepathObj.filename();
     }
 
     SceneManager::AddObject(SceneObject::create("Model", filepathObj.filename().c_str()));
@@ -110,22 +144,12 @@ void AddDroppedFileToScene(const std::string &filepath)
     auto model = SceneManager::GetObject<Model>(filepathObj.filename());
     model->directory = filepathObj.directory();
     model->filename = filepathObj.filename();
+    model->normalizeMesh = true;
     model->SetMaterial(materials["model"]);
     model->awake();
-    // model->printBoneInfo();
+    model->printBoneInfo();
 
-    for (auto it : model->bones)
-    {
-        auto [nodeNmae, head, tail] = it;
-        auto nodeObj = std::dynamic_pointer_cast<Model>(SceneObject::create("Model", filepathObj.filename() + nodeNmae));
-        nodeObj->directory = Path(ROOT_DIR) + "/assets";
-        nodeObj->filename = "ico-sphere.obj";
-        nodeObj->SetMaterial(materials["node"]);
-        nodeObj->awake();
-        nodeObj->transform.scale(Vector3(0.0002, 0.0002, 0.0002));
-        nodeObj->transform.position(head);
-        SceneManager::AddObject(nodeObj);
-    }
+    model->AddBoneNodes(materials["node"], materials["link"]);
 
     std::cout << "Added model: " << filepathObj.filename() << std::endl;
 }
@@ -199,42 +223,22 @@ int main()
         std::shared_ptr<Material> nodeMaterial = std::make_shared<Material>(shader);
         nodeMaterial->SetUniform("color", "vec4f", glm::vec4(218.0f / 255.0f, 169.0f / 255.0f, 2.0f / 255.0f, 1.0f));
         materials["node"] = nodeMaterial;
+
+        std::shared_ptr<Material> linkMaterial = std::make_shared<Material>(shader);
+        linkMaterial->SetUniform("color", "vec4f", glm::vec4(113.0f / 255.0f, 121.0f / 255.0f, 224.0f / 255.0f, 1.0f));
+        materials["link"] = linkMaterial;
     }
 
     SceneManager::SetCurrentScene(std::make_shared<Scene>());
-    SceneManager::AddObject(SceneObject::create("Camera", "main camera"));
-
-    // SceneManager::AddObject(SceneObject::create("Model", "mesh13"));
-
-    // {
-    //     auto model = SceneManager::GetObject<Model>("mesh13");
-    //     model->directory = Path(ROOT_DIR) + "/assets";
-    //     model->filename = "mesh13_rigged.glb";
-    //     model->SetMaterial(modelMaterial);
-    //     model->awake();
-    //     model->printBoneInfo();
-    //     model->initialize();
-
-    //     for (auto it : model->bones)
-    //     {
-    //         auto [nodeNmae, head, tail] = it;
-    //         auto nodeObj = std::dynamic_pointer_cast<Model>(SceneObject::create("Model", nodeNmae));
-    //         nodeObj->directory = Path(ROOT_DIR) + "/assets";
-    //         nodeObj->filename = "ico-sphere.obj";
-    //         nodeObj->SetMaterial(nodeMaterial);
-    //         nodeObj->awake();
-    //         nodeObj->transform.scale(Vector3(0.0002, 0.0002, 0.0002));
-    //         nodeObj->transform.position(head);
-    //         nodeObj->initialize();
-    //         SceneManager::AddObject(nodeObj);
-    //     }
-    // }
+    auto camera = std::dynamic_pointer_cast<Camera>(SceneObject::create("Camera", "main camera"));
+    camera->speed = 0.5f;
+    camera->transform.position(Vector3(0.0f, 0.0f, 1.5f));
+    SceneManager::AddObject(camera);
 
     static int selectedIndex = -1;
 
-    int ret = glfwWindowShouldClose(window);
     GlobalTime::Init();
-    while (!ret)
+    while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
 
@@ -242,6 +246,18 @@ int main()
         GlobalTime::UpdateCurrentFrameTime();
         float deltaTime = GlobalTime::GetFrameDeltaTime();
         // std::cout << "Delta Time: " << deltaTime << " seconds." << std::endl;
+
+        // for (auto &e : Event::events())
+        // {
+        //     if (e->className == "KeyPressedEvent")
+        //     {
+        //         auto ke = std::dynamic_pointer_cast<Event::KeyPressedEvent>(e);
+        //         if(ke->key == GLFW_KEY_P)
+        //         {
+        //             MeshManager::Instance().PrintStatus();
+        //         }
+        //     }
+        // }
 
         SceneManager::Update();
 
@@ -258,6 +274,8 @@ int main()
         auto camera = SceneManager::GetObject<Camera>("main camera");
 
         MeshManager::Instance().FlushBatches(camera->GetViewMatrix(), camera->GetProjectionMatrix((float)WIDTH / (float)HEIGHT));
+
+        MeshManager::Instance().CleanupUnusedMeshes();
 
         // ---------------- ImGui 帧开始 ----------------
         ImGui_ImplOpenGL3_NewFrame();
@@ -290,23 +308,9 @@ int main()
                     auto prevObj = SceneManager::GetObject<Model>(currentModel);
                     if (prevObj)
                     {
-                        prevObj->active = false;
-                        for (auto it : prevObj->bones)
-                        {
-                            auto [nodeName, head, tail] = it;
-                            auto nodeObj = SceneManager::GetObject<Model>(prevObj->objName + nodeName);
-                            if (nodeObj)
-                                nodeObj->active = false;
-                        }
+                        prevObj->SetActive(false);
                     }
-                    obj->active = true;
-                    for (auto it : obj->bones)
-                    {
-                        auto [nodeName, head, tail] = it;
-                        auto nodeObj = SceneManager::GetObject<Model>(obj->objName + nodeName);
-                        if (nodeObj)
-                            nodeObj->active = true;
-                    }
+                    obj->SetActive(true);
 
                     currentModel = objName;
                 }

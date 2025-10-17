@@ -62,11 +62,11 @@ if (MSVC)
 elseif (MINGW)
     target_link_libraries(${PROJECT_NAME}
         PRIVATE
+        imgui
         opengl32
         glfw3dll                                                                                                                                                                  
         glew32.dll
         assimp.dll
-        imgui
     )
 endif()
 

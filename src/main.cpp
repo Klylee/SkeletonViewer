@@ -1,171 +1,171 @@
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-#include <string>
-#include <iostream>
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
-#include <chrono>
-#include <thread>
-#include <glm/gtc/type_ptr.hpp>
-#include <imgui/imgui.h>
-#include <backends/imgui_impl_glfw.h>
-#include <backends/imgui_impl_opengl3.h>
+// #include <GL/glew.h>
+// #include <GLFW/glfw3.h>
+// #include <string>
+// #include <iostream>
+// #include <assimp/Importer.hpp>
+// #include <assimp/scene.h>
+// #include <assimp/postprocess.h>
+// #include <chrono>
+// #include <thread>
+// #include <glm/gtc/type_ptr.hpp>
+// #include <imgui/imgui.h>
+// #include <backends/imgui_impl_glfw.h>
+// #include <backends/imgui_impl_opengl3.h>
 
-#include "config.h"
-#include "Vec.h"
-#include "Model.h"
-#include "Camera.h"
-#include "Shader.h"
-#include "Path.h"
-#include "Event.h"
-#include "Input.h"
-#include "GlobalTime.h"
-#include "SceneManager.h"
-#include "MeshManager.h"
-#include "EventDispatcher.h"
+// #include "config.h"
+// #include "Vec.h"
+// #include "Model.h"
+// #include "Camera.h"
+// #include "Shader.h"
+// #include "Path.h"
+// #include "Event.h"
+// #include "Input.h"
+// #include "GlobalTime.h"
+// #include "SceneManager.h"
+// #include "MeshManager.h"
+// #include "EventDispatcher.h"
 
 #include "SkeletonViewerApp.h"
 
-std::string currentModel = "";
-std::vector<std::string> droppedFiles;
-std::unordered_map<std::string, std::shared_ptr<Material>> materials;
+// std::string currentModel = "";
+// std::vector<std::string> droppedFiles;
+// std::unordered_map<std::string, std::shared_ptr<Material>> materials;
 
-void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
-{
-    if (action == GLFW_PRESS || action == GLFW_REPEAT)
-    {
-        if (key == GLFW_KEY_P)
-        {
-            MeshManager::Instance().PrintStatus();
-        }
-        else if (key == GLFW_KEY_DELETE)
-        {
-            // delete current model
-            if (currentModel != "")
-            {
-                auto model = SceneManager::GetObject<Model>(currentModel);
-                if (model)
-                {
-                    SceneManager::Remove(currentModel);
-                }
+// void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
+// {
+//     if (action == GLFW_PRESS || action == GLFW_REPEAT)
+//     {
+//         if (key == GLFW_KEY_P)
+//         {
+//             MeshManager::Instance().PrintStatus();
+//         }
+//         else if (key == GLFW_KEY_DELETE)
+//         {
+//             // delete current model
+//             if (currentModel != "")
+//             {
+//                 auto model = SceneManager::GetObject<Model>(currentModel);
+//                 if (model)
+//                 {
+//                     SceneManager::Remove(currentModel);
+//                 }
 
-                droppedFiles.erase(std::remove(droppedFiles.begin(), droppedFiles.end(), currentModel), droppedFiles.end());
+//                 droppedFiles.erase(std::remove(droppedFiles.begin(), droppedFiles.end(), currentModel), droppedFiles.end());
 
-                if (!droppedFiles.empty())
-                {
-                    currentModel = droppedFiles.back();
-                    auto model = SceneManager::GetObject<Model>(currentModel);
-                    if (model)
-                    {
-                        model->SetActive(true);
-                    }
-                }
-                else
-                {
-                    currentModel = "";
-                }
-            }
-        }
-        Event::events().push_back(std::make_shared<Event::KeyPressedEvent>(key));
-    }
-    else if (action == GLFW_RELEASE)
-    {
-        Event::events().push_back(std::make_shared<Event::KeyReleasedEvent>(key));
-    }
-}
+//                 if (!droppedFiles.empty())
+//                 {
+//                     currentModel = droppedFiles.back();
+//                     auto model = SceneManager::GetObject<Model>(currentModel);
+//                     if (model)
+//                     {
+//                         model->SetActive(true);
+//                     }
+//                 }
+//                 else
+//                 {
+//                     currentModel = "";
+//                 }
+//             }
+//         }
+//         Event::events().push_back(std::make_shared<Event::KeyPressedEvent>(key));
+//     }
+//     else if (action == GLFW_RELEASE)
+//     {
+//         Event::events().push_back(std::make_shared<Event::KeyReleasedEvent>(key));
+//     }
+// }
 
-void cursor_position_callback(GLFWwindow *window, double xpos, double ypos)
-{
-    auto e = std::make_shared<Event::MouseMoveEvent>((float)xpos, (float)ypos);
-    Event::events().push_back(e);
-}
+// void cursor_position_callback(GLFWwindow *window, double xpos, double ypos)
+// {
+//     auto e = std::make_shared<Event::MouseMoveEvent>((float)xpos, (float)ypos);
+//     Event::events().push_back(e);
+// }
 
-void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
-{
-    double xpos, ypos;
-    glfwGetCursorPos(window, &xpos, &ypos);
+// void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
+// {
+//     double xpos, ypos;
+//     glfwGetCursorPos(window, &xpos, &ypos);
 
-    Event::MouseButton btn = Event::MouseButton::Left;
-    if (button == GLFW_MOUSE_BUTTON_LEFT)
-        btn = Event::MouseButton::Left;
-    else if (button == GLFW_MOUSE_BUTTON_MIDDLE)
-        btn = Event::MouseButton::Mid;
-    else if (button == GLFW_MOUSE_BUTTON_RIGHT)
-        btn = Event::MouseButton::Right;
+//     Event::MouseButton btn = Event::MouseButton::Left;
+//     if (button == GLFW_MOUSE_BUTTON_LEFT)
+//         btn = Event::MouseButton::Left;
+//     else if (button == GLFW_MOUSE_BUTTON_MIDDLE)
+//         btn = Event::MouseButton::Mid;
+//     else if (button == GLFW_MOUSE_BUTTON_RIGHT)
+//         btn = Event::MouseButton::Right;
 
-    Event::MouseButtonEvent::Action act = (action == GLFW_PRESS) ? Event::MouseButtonEvent::Press : Event::MouseButtonEvent::Release;
+//     Event::MouseButtonEvent::Action act = (action == GLFW_PRESS) ? Event::MouseButtonEvent::Press : Event::MouseButtonEvent::Release;
 
-    auto e = std::make_shared<Event::MouseButtonEvent>((float)xpos, (float)ypos, btn, act);
-    Event::events().push_back(e);
-}
+//     auto e = std::make_shared<Event::MouseButtonEvent>((float)xpos, (float)ypos, btn, act);
+//     Event::events().push_back(e);
+// }
 
-void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
-{
-    double xpos, ypos;
-    glfwGetCursorPos(window, &xpos, &ypos);
+// void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
+// {
+//     double xpos, ypos;
+//     glfwGetCursorPos(window, &xpos, &ypos);
 
-    auto e = std::make_shared<Event::MouseScrolledEvent>((float)xpos, (float)ypos, xoffset, yoffset);
-    Event::events().push_back(e);
-}
+//     auto e = std::make_shared<Event::MouseScrolledEvent>((float)xpos, (float)ypos, xoffset, yoffset);
+//     Event::events().push_back(e);
+// }
 
-void AddDroppedFileToScene(const std::string &filepath)
-{
-    Path filepathObj = Path(filepath);
-    std::string ext = filepathObj.extension();
-    if (ext != "obj" && ext != "glb")
-    {
-        std::cout << "Only .obj and .glb files are supported." << std::endl;
-        return;
-    }
+// void AddDroppedFileToScene(const std::string &filepath)
+// {
+//     Path filepathObj = Path(filepath);
+//     std::string ext = filepathObj.extension();
+//     if (ext != "obj" && ext != "glb")
+//     {
+//         std::cout << "Only .obj and .glb files are supported." << std::endl;
+//         return;
+//     }
 
-    if (SceneManager::GetObject<Model>(filepathObj.filename()))
-    {
-        std::cout << "Model " << filepathObj.filename() << " already exists in the scene." << std::endl;
-        return;
-    }
+//     if (SceneManager::GetObject<Model>(filepathObj.filename()))
+//     {
+//         std::cout << "Model " << filepathObj.filename() << " already exists in the scene." << std::endl;
+//         return;
+//     }
 
-    droppedFiles.push_back(filepathObj.filename());
+//     droppedFiles.push_back(filepathObj.filename());
 
-    if (currentModel == "")
-    {
-        currentModel = filepathObj.filename();
-    }
-    else
-    {
-        auto model = SceneManager::GetObject<Model>(currentModel);
-        if (model)
-        {
-            model->SetActive(false);
-        }
-        currentModel = filepathObj.filename();
-    }
+//     if (currentModel == "")
+//     {
+//         currentModel = filepathObj.filename();
+//     }
+//     else
+//     {
+//         auto model = SceneManager::GetObject<Model>(currentModel);
+//         if (model)
+//         {
+//             model->SetActive(false);
+//         }
+//         currentModel = filepathObj.filename();
+//     }
 
-    SceneManager::AddObject(SceneObject::create("Model", filepathObj.filename().c_str()));
+//     SceneManager::AddObject(SceneObject::create("Model", filepathObj.filename().c_str()));
 
-    auto model = SceneManager::GetObject<Model>(filepathObj.filename());
-    model->directory = filepathObj.directory();
-    model->filename = filepathObj.filename();
-    model->normalizeMesh = true;
-    model->SetMaterial(materials["model"]);
-    model->awake();
-    model->printBoneInfo();
+//     auto model = SceneManager::GetObject<Model>(filepathObj.filename());
+//     model->directory = filepathObj.directory();
+//     model->filename = filepathObj.filename();
+//     model->normalizeMesh = true;
+//     model->SetMaterial(materials["model"]);
+//     model->awake();
+//     model->printBoneInfo();
 
-    model->AddBoneNodes(materials["node"], materials["link"]);
+//     model->AddBoneNodes(materials["node"], materials["link"]);
 
-    std::cout << "Added model: " << filepathObj.filename() << std::endl;
-}
+//     std::cout << "Added model: " << filepathObj.filename() << std::endl;
+// }
 
-void drop_callback(GLFWwindow *window, int count, const char **paths)
-{
-    for (int i = 0; i < count; i++)
-    {
-        AddDroppedFileToScene(paths[i]);
-    }
-}
+// void drop_callback(GLFWwindow *window, int count, const char **paths)
+// {
+//     for (int i = 0; i < count; i++)
+//     {
+//         AddDroppedFileToScene(paths[i]);
+//     }
+// }
 
-#define WIDTH 1200
-#define HEIGHT 900
+// #define WIDTH 1200
+// #define HEIGHT 900
 int main()
 {
     std::shared_ptr<SkeletonViewerApp> app = std::make_shared<SkeletonViewerApp>();

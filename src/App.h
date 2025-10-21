@@ -30,8 +30,8 @@ protected:
 
     virtual void ProcessEvents();
     virtual void Update();
-    virtual void RenderClear();
     virtual void RenderBefore();
+    virtual void RenderClear();
     virtual void Render();
     virtual void RenderAfter();
     virtual void RenderImGuiBefore();

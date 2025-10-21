@@ -19,7 +19,8 @@ using namespace std::filesystem;
 class SkeletonViewerApp : public App
 {
 public:
-    SkeletonViewerApp() = default;
+    SkeletonViewerApp(int width = 1200, int height = 900, const std::string &title = "SkeletonViewer")
+        : App(width, height, title) {}
 
 protected:
     bool InitScene() override

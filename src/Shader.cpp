@@ -151,6 +151,11 @@ Shader::Shader(const std::unordered_map<ShaderVariant, std::string> &shaderpaths
     currentProgram = programs.at(ShaderVariant::Basic);
 }
 
+Shader::~Shader()
+{
+    Delete();
+}
+
 void Shader::Use(ShaderVariant variant)
 {
     currentProgram = programs[variant];

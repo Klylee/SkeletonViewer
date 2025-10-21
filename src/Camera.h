@@ -6,10 +6,15 @@
 #include "SceneObject.h"
 #include "Event.h"
 
+#define Color(r, g, b) glm::vec3(r / 255.0f, g / 255.0f, b / 255.0f)
+
 class Camera : public SceneObject
 {
 public:
 	REGISTER_SCENE_OBJECT(Camera)
+
+	glm::vec3 backgroundColor = Color(255, 255, 255);
+
 	float fieldView = 45.0f;
 	float nearPlane = 0.001f;
 	float farPlane = 100.0f;

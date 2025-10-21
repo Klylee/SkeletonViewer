@@ -5,6 +5,8 @@
 #include <memory>
 #include <unordered_map>
 #include <string>
+
+#include "Camera.h"
 #include "SceneObject.h"
 
 class Scene
@@ -15,7 +17,7 @@ public:
     {
         if (!obj)
             return;
-        
+
         if (sceneObjectMap.find(obj->objName) != sceneObjectMap.end())
             return;
 
@@ -87,7 +89,19 @@ public:
     // 获取所有对象
     const std::vector<std::shared_ptr<SceneObject>> &GetObjects() const { return sceneObjects; }
 
+    // 设置主相机
+    void SetMainCamera(const std::shared_ptr<Camera> &camera)
+    {
+        mainCamera = camera;
+    }
+
+    std::shared_ptr<Camera> GetMainCamera() const
+    {
+        return mainCamera;
+    }
+
 private:
     std::vector<std::shared_ptr<SceneObject>> sceneObjects;
     std::unordered_map<std::string, std::weak_ptr<SceneObject>> sceneObjectMap;
+    std::shared_ptr<Camera> mainCamera;
 };

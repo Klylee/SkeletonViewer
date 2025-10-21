@@ -48,6 +48,19 @@ public:
             currentScene->Remove(name);
     }
 
+    static std::shared_ptr<Camera> GetMainCamera()
+    {
+        if (currentScene)
+            return currentScene->GetMainCamera();
+        return nullptr;
+    }
+
+    static void SetMainCamera(const std::shared_ptr<Camera> &camera)
+    {
+        if (currentScene)
+            currentScene->SetMainCamera(camera);
+    }
+
 private:
     inline static std::shared_ptr<Scene> currentScene = nullptr;
 };

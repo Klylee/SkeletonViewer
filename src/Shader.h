@@ -34,6 +34,7 @@ class Shader
 
 public:
     Shader(const std::unordered_map<ShaderVariant, std::string> &shaderpaths);
+    ~Shader();
 
     void Use(ShaderVariant variant = ShaderVariant::Basic);
     void Delete();

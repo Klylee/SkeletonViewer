@@ -138,6 +138,12 @@ Mesh::~Mesh()
         delete[] vertices;
     if (indices)
         delete[] indices;
+
+    // 释放GPU资源
+    glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &ibo);
+    glDeleteBuffers(1, &instanceVBO);
 }
 
 void Mesh::initialize()

@@ -6,27 +6,10 @@
 #include <vector>
 #include <memory>
 #include <glm/glm.hpp>
+#include "Texture.h"
 
-enum TextureType
-{
-    DIFFUSE,
-    SPECULAR,
-    AMBIENT
-};
-class Texture
-{
-public:
-    unsigned int texid;
-    TextureType type;
-
-    Texture() = default;
-    Texture(const std::string &dict, const std::string &file, TextureType type);
-    void bind(unsigned int channel);
-    void unbind();
-};
 // vertices: n * 8
 // pos.x   pos.y   pos.z   nor.x   nor.y   nor.z   tex.u   tex.v
-
 class Mesh
 {
 public:
@@ -36,7 +19,7 @@ public:
     int i_num;
     float *vertices;
     unsigned int *indices;
-    std::vector<Texture> textures;
+    std::vector<std::shared_ptr<Texture>> textures;
 
     unsigned int vao;
     unsigned int vbo;

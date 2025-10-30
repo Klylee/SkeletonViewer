@@ -153,9 +153,70 @@ protected:
             currentModel = filepathObj.filename();
         }
 
-        SceneManager::AddObject(SceneObject::create("Model", filepathObj.filename().c_str()));
+        auto model = std::dynamic_pointer_cast<Model>(SceneObject::create("Model", filepathObj.filename().c_str()));
+        SceneManager::AddObject(model);
 
-        auto model = SceneManager::GetObject<Model>(filepathObj.filename());
+        // 添加对rignet输入结果的支持，主模型obj，骨骼记录着xxx_rig.txt里面
+        if (filepathObj.extension() == "obj")
+        {
+            auto rig_txt = filepath.substr(0, filepath.size() - 4) + "_rig.txt";
+            std::ifstream file(rig_txt);
+
+            std::unordered_map<std::string, Vector3> jointPositions;
+            std::unordered_map<std::string, std::string> parentOf;
+            std::unordered_map<std::string, std::vector<std::string>> childrenOf;
+
+            if (file.is_open())
+            {
+                std::string line;
+                while (std::getline(file, line))
+                {
+                    std::istringstream iss(line);
+                    std::string type;
+                    iss >> type;
+
+                    if (type == "joints")
+                    {
+                        std::string name;
+                        float x, y, z;
+                        iss >> name >> x >> y >> z;
+                        jointPositions[name] = {x, y, z};
+                    }
+                    else if (type == "hier")
+                    {
+                        std::string parent, child;
+                        iss >> parent >> child;
+                        parentOf[child] = parent;
+                        childrenOf[parent].push_back(child);
+                    }
+                }
+                file.close();
+            }
+
+            for (const auto &[name, head] : jointPositions)
+            {
+                Vector3 tail = head; // 默认tail = head
+                if (childrenOf.find(name) != childrenOf.end())
+                {
+                    const auto &children = childrenOf[name];
+                    // 若有多个子节点，取平均位置
+                    Vector3 avg = {0, 0, 0};
+                    for (const auto &c : children)
+                    {
+                        Vector3 p = jointPositions[c];
+                        avg.x += p.x;
+                        avg.y += p.y;
+                        avg.z += p.z;
+                    }
+                    float inv = 1.0f / children.size();
+                    tail = {avg.x * inv, avg.y * inv, avg.z * inv};
+                }
+
+                std::string parent = parentOf.count(name) ? parentOf[name] : "none";
+                model->bones[name] = std::make_tuple(head, tail, parent);
+            }
+        }
+
         model->directory = filepathObj.directory();
         model->filename = filepathObj.filename();
         model->normalizeMesh = true;

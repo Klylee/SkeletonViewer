@@ -19,7 +19,7 @@ public:
     int i_num;
     float *vertices;
     unsigned int *indices;
-    std::vector<std::shared_ptr<Texture>> textures;
+    std::vector<Texture> textures;
 
     unsigned int vao;
     unsigned int vbo;

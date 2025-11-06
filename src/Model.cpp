@@ -68,6 +68,16 @@ void Model::awake()
         return;
     }
     processNode(scene->mRootNode, scene);
+    for (auto &b : bones)
+    {
+        boneIDs[nextBoneID] = filename + "_" + b.first;
+        bonenames[filename + "_" + b.first] = nextBoneID;
+        bone_num[b.first] = nextBoneID;
+        bone_num_ID[nextBoneID] = b.first;
+        nextBoneID++;
+    }
+    numOfBone = nextBoneID;
+    printBoneID();
 
     // if needing to normalize the whole model
     if (normalizeMesh)
@@ -87,30 +97,42 @@ void Model::awake()
             float minY = mesh->vertices[1], maxY = mesh->vertices[1];
             float minZ = mesh->vertices[2], maxZ = mesh->vertices[2];
 
-            #pragma omp parallel for reduction(min:minX,minY,minZ) reduction(max:maxX,maxY,maxZ)
+#pragma omp parallel for reduction(min : minX, minY, minZ) reduction(max : maxX, maxY, maxZ)
             for (int i = 1; i < mesh->v_num; i++)
             {
                 float x = mesh->vertices[i * 8 + 0];
                 float y = mesh->vertices[i * 8 + 1];
                 float z = mesh->vertices[i * 8 + 2];
 
-                if (x < minX) minX = x;
-                if (x > maxX) maxX = x;
-                if (y < minY) minY = y;
-                if (y > maxY) maxY = y;
-                if (z < minZ) minZ = z;
-                if (z > maxZ) maxZ = z;
+                if (x < minX)
+                    minX = x;
+                if (x > maxX)
+                    maxX = x;
+                if (y < minY)
+                    minY = y;
+                if (y > maxY)
+                    maxY = y;
+                if (z < minZ)
+                    minZ = z;
+                if (z > maxZ)
+                    maxZ = z;
             }
 
-            // 更新全局边界
-            #pragma omp critical
+// 更新全局边界
+#pragma omp critical
             {
-                if (minX < globalMinX) globalMinX = minX;
-                if (maxX > globalMaxX) globalMaxX = maxX;
-                if (minY < globalMinY) globalMinY = minY;
-                if (maxY > globalMaxY) globalMaxY = maxY;
-                if (minZ < globalMinZ) globalMinZ = minZ;
-                if (maxZ > globalMaxZ) globalMaxZ = maxZ;
+                if (minX < globalMinX)
+                    globalMinX = minX;
+                if (maxX > globalMaxX)
+                    globalMaxX = maxX;
+                if (minY < globalMinY)
+                    globalMinY = minY;
+                if (maxY > globalMaxY)
+                    globalMaxY = maxY;
+                if (minZ < globalMinZ)
+                    globalMinZ = minZ;
+                if (maxZ > globalMaxZ)
+                    globalMaxZ = maxZ;
             }
         }
 
@@ -120,11 +142,14 @@ void Model::awake()
         float globalCenterZ = (globalMinZ + globalMaxZ) / 2.0f;
         globalCenter = Vector3(globalCenterX, globalCenterY, globalCenterZ);
         globalScale = std::max({globalMaxX - globalMinX, globalMaxY - globalMinY, globalMaxZ - globalMinZ});
-        
+
         // 避免除零
-        if (globalScale < 1e-6f) {
+        if (globalScale < 1e-6f)
+        {
             globalScale = 1.0f;
-        } else {
+        }
+        else
+        {
             globalScale = 1.0f / globalScale;
         }
 
@@ -158,6 +183,14 @@ std::string Model::info()
     }
     ss << "total: " << sumFace << std::endl;
     return ss.str();
+}
+
+void Model::printBoneID()
+{
+    for (int i = 0; i < numOfBone; i++)
+    {
+        std::cout << i << '|' << boneIDs[i] << std::endl;
+    }
 }
 
 void Model::printBoneInfo()
@@ -199,7 +232,7 @@ void Model::AddBoneNodes(const std::shared_ptr<Material> &nodeMaterial, const st
 
             Vector3 direction = glm::normalize(head - parentHead);
             float length = glm::distance(head, parentHead);
-            
+
             // 计算圆锥体的缩放
             // cone.obj原始高度为2，所以需要缩放为实际骨骼长度的一半
             float heightScale = length / 2.0f;
@@ -208,11 +241,11 @@ void Model::AddBoneNodes(const std::shared_ptr<Material> &nodeMaterial, const st
             glm::vec3 coneScale = glm::vec3(radiusScale, heightScale, radiusScale);
             linkObj->transform.scale(coneScale * globalScale);
 
-            //计算旋转
+            // 计算旋转
             glm::vec3 originalDirection(0.0f, 1.0f, 0.f); // cone.obj原始朝向（高度方向）
             linkObj->transform.rotate(originalDirection, direction);
 
-            //计算位置
+            // 计算位置
             linkObj->transform.position((parentHead - globalCenter) * globalScale);
             SceneManager::AddObject(linkObj);
             children.push_back(linkObj);

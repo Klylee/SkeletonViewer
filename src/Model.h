@@ -15,6 +15,13 @@ public:
     std::shared_ptr<Material> material;
     std::vector<std::shared_ptr<Mesh>> meshes;
     std::unordered_map<std::string, std::tuple<Vector3, Vector3, std::string>> bones; // name-> <head, tail, parentName>
+    // 为骨骼增加ID
+    std::unordered_map<int, std::string> boneIDs;     // ID -> name
+    std::unordered_map<std::string, int> bonenames;   // name -> ID
+    std::unordered_map<std::string, int> bone_num;    // name->ID(name形如bone_xx)
+    std::unordered_map<int, std::string> bone_num_ID; // ID->name(name形如bone_xx)
+    int nextBoneID = 0;
+    int numOfBone = 0;
 
     ~Model() override;
 
@@ -25,6 +32,7 @@ public:
     void SetMaterial(const std::shared_ptr<Material> mat) { material = std::move(mat); }
     std::string info();
     void printBoneInfo();
+    void printBoneID();
 
     // add bone nodes to scene, visualize with nodeMaterial
     void AddBoneNodes(const std::shared_ptr<Material> &nodeMaterial, const std::shared_ptr<Material> &linkMaterial);
@@ -34,6 +42,7 @@ public:
     std::string filename;
 
     bool normalizeMesh = false;
-    Vector3 globalCenter = Vector3(0.0f);;
+    Vector3 globalCenter = Vector3(0.0f);
+    ;
     float globalScale = 1.0f;
 };

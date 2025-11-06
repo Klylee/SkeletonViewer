@@ -13,7 +13,8 @@
 #include "SceneManager.h"
 #include "MeshManager.h"
 #include "EventDispatcher.h"
-
+#include "Camera.h"
+#include "mesh.h"
 using namespace std::filesystem;
 
 class SkeletonViewerApp : public App
@@ -42,22 +43,170 @@ protected:
             linkMaterial->SetUniform("color", "vec4f", glm::vec4(113.0f / 255.0f, 121.0f / 255.0f, 224.0f / 255.0f, 1.0f));
             materials["link"] = linkMaterial;
         }
+        // std::cout << "[DBG] currentModel=" << currentModel << std::endl;
+        // 初始化id为0到100对应的材质颜色：
+        {
+            idMaterials.resize(100);
+            for (int i = 0; i < 100; ++i)
+            {
+                float gray = i;                 // 灰度值 0~100
+                float n = gray / 100.0f;        // 映射到 0~1
+                glm::vec4 color(n, n, n, 1.0f); // vec4(R=G=B=gray, A=1)
 
+                idMaterials[i] = std::make_shared<Material>(shader);
+                idMaterials[i]->SetUniform("color", "vec4f", color); // 注意 uniform 名称和 shader 匹配
+            }
+        }
         Event::EventDispatcher::Instance().RegisterHandler<Event::DropEvent>(this, &SkeletonViewerApp::OnDropFiles);
         Event::EventDispatcher::Instance().RegisterHandler<Event::KeyPressedEvent>(this, &SkeletonViewerApp::OnKeyPressed);
+        Event::EventDispatcher::Instance().RegisterHandler<Event::MouseButtonEvent>(this, &SkeletonViewerApp::OnMouseButton);
 
         return true;
     }
 
     void RenderBefore() override
     {
+        auto backgroundColor = SceneManager::GetMainCamera()->backgroundColor;
+        glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
         if (glfwGetKey(window, GLFW_KEY_J) == GLFW_RELEASE)
         {
             jKeyPressed = false;
         }
+        if (mouseClickPending && !currentModel.empty())
+        {
+            // --- 保存当前状态 ---
+            GLboolean prevDepthTest = glIsEnabled(GL_DEPTH_TEST);
+            GLboolean prevBlend = glIsEnabled(GL_BLEND);
+            GLint prevDepthMask;
+            glGetIntegerv(GL_DEPTH_WRITEMASK, &prevDepthMask);
 
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            // --- 为 ID pass 设置确定的状态 ---
+            // 不希望 blend 影响 ID 颜色：禁用 blend
+            glDisable(GL_BLEND);
+            glEnable(GL_DEPTH_TEST);
+            glDepthMask(GL_FALSE); // 不写入深度缓冲
+            glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+            auto obj = SceneManager::GetObject<Model>(currentModel);
+            auto shader = idMaterials[0]->GetShader(); // 共享 shader
+            shader->Use(ShaderVariant::Basic);
+            auto camera = SceneManager::GetMainCamera();
+            for (auto &child : obj->children)
+            {
+                if (auto modelChild = std::dynamic_pointer_cast<Model>(child))
+                {
+                    // 通过名字查ID
+                    auto it = obj->bonenames.find(modelChild->objName);
+                    if (it == obj->bonenames.end())
+                    {
+                        // 不在 map 中，说明是关节或者非骨骼节点，跳过
+                        continue;
+                    }
+
+                    modelChild = std::dynamic_pointer_cast<Model>(child);
+                    int id = obj->bonenames[modelChild->objName];
+                    // int id = it->second; // 安全获取 ID
+                    auto mat = idMaterials[id];
+                    // 设置材质
+                    mat->Apply();
+                    // 给每个骨骼节点设置对应的颜色材质
+                    modelChild->SetMaterial(mat);
+                    // shader->SetUniformVec4f("color", glm::vec4(1,0,0,1));
+                    modelChild->draw();
+                }
+            }
+            MeshManager::Instance().FlushBatches(
+                camera->GetViewMatrix(),
+                camera->GetProjectionMatrix((float)width / (float)height));
+            MeshManager::Instance().CleanupUnusedMeshes();
+            glFinish();
+            // 读取像素
+            int fbWidth, fbHeight;
+            glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
+            double ypos = fbHeight - mouseY; // 翻转Y
+            unsigned char pixel[4];
+            glReadPixels((int)mouseX, (int)ypos, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+
+            int id = int((pixel[0] / 255.0f) * 100.0f + 0.5f);
+            selectedBoneName = obj->bone_num_ID[id];
+            std::cout << "Clicked bone: " << selectedBoneName << " (ID=" << id << ")" << std::endl;
+
+            mouseClickPending = false; // 重置点击
+            for (auto &child : obj->children)
+            {
+                if (auto modelChild = std::dynamic_pointer_cast<Model>(child))
+                {
+                    modelChild->SetMaterial(materials["node"]); // 恢复彩色材质
+                }
+            }
+            // 恢复写深度（如果之前是写深度的）
+            if (prevDepthMask)
+                glDepthMask(GL_TRUE);
+            else
+                glDepthMask(GL_FALSE);
+
+            // 恢复 depth test 状态
+            if (!prevDepthTest)
+                glDisable(GL_DEPTH_TEST); // 如果之前没启用则禁用
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        }
+    }
+
+    void Render() override
+    {
+        // 增加权重颜色
+        if (selectedBoneName != "")
+        {
+            if (currentModel.empty())
+                return;
+
+            auto model = SceneManager::GetObject<Model>(currentModel);
+            if (!model)
+                return;
+
+            // 遍历模型的每个 Mesh
+            for (auto &mesh : model->meshes)
+            {
+                glm::vec3 defaultBlue(2.0f / 255.0f, 163.0f / 255.0f, 218.0f / 255.0f);
+                for (int i = 0; i < mesh->v_num; i++)
+                {
+                    mesh->vertices[i * 11 + 8] = defaultBlue.r;
+                    mesh->vertices[i * 11 + 9] = defaultBlue.g;
+                    mesh->vertices[i * 11 + 10] = defaultBlue.b;
+                }
+                auto it = mesh->boneWeights.find(selectedBoneName);
+                if (it != mesh->boneWeights.end())
+                {
+                    const auto &bw = it->second;
+                    for (size_t i = 0; i < bw.vertexIds.size(); ++i)
+                    {
+                        int vid = bw.vertexIds[i];
+                        float weight = bw.weights[i]; // 0~1
+
+                        weight = glm::clamp(weight, 0.0f, 1.0f);
+                        // 从浅蓝 -> 红 渐变
+                        glm::vec3 blue = glm::vec3(2.0f / 255.0f, 163.0f / 255.0f, 218.0f / 255.0f);
+                        glm::vec3 red = glm::vec3(1.0f, 0.0f, 0.0f);
+                        glm::vec3 color = glm::mix(blue, red, weight);
+
+                        mesh->vertices[vid * 11 + 8] = color.r;
+                        mesh->vertices[vid * 11 + 9] = color.g;
+                        mesh->vertices[vid * 11 + 10] = color.b;
+                    }
+                    glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
+                    glBufferSubData(GL_ARRAY_BUFFER, 0, mesh->v_size * sizeof(float), mesh->vertices);
+                }
+            }
+        }
+        // 渲染
+        SceneManager::Draw();
+        auto camera = SceneManager::GetMainCamera();
+        MeshManager::Instance().FlushBatches(camera->GetViewMatrix(),
+                                             camera->GetProjectionMatrix((float)width / (float)height));
+        MeshManager::Instance().CleanupUnusedMeshes();
     }
 
     void RenderAfter() override
@@ -103,6 +252,28 @@ protected:
                     auto prevObj = SceneManager::GetObject<Model>(currentModel);
                     if (prevObj)
                     {
+                        for (auto &mesh : prevObj->meshes)
+                        {
+                            // CPU 内存清空
+                            mesh->weightColors.clear();
+
+                            // GPU buffer 删除
+                            if (mesh->weightColorVBO != 0)
+                            {
+                                glDeleteBuffers(1, &mesh->weightColorVBO);
+                                mesh->weightColorVBO = 0;
+                            }
+
+                            // 如果 DrawWithBoneWeight 内部有 flag 表示使用权重渲染
+                            // mesh->useWeightColor = false;
+                        }
+
+                        // 切换模型的时候释放材质
+                        for (auto &child : prevObj->children)
+                        {
+                            if (auto childModel = std::dynamic_pointer_cast<Model>(child))
+                                childModel->material.reset();
+                        }
                         prevObj->SetActive(false);
                     }
                     obj->SetActive(true);
@@ -222,7 +393,7 @@ protected:
         model->normalizeMesh = true;
         model->SetMaterial(materials["model"]);
         model->awake();
-        model->printBoneInfo();
+        // model->printBoneID();
 
         model->AddBoneNodes(materials["node"], materials["link"]);
 
@@ -266,11 +437,27 @@ protected:
     }
 
     void SaveFrameBuffer(const std::string &filename);
+    void OnMouseButton(const std::shared_ptr<Event::MouseButtonEvent> &event)
+    {
+        if (event->action == Event::MouseButtonEvent::Press &&
+            event->button == Event::MouseButton::Left)
+        {
+            mouseClickPending = true;
+            mouseX = event->cursorX;
+            mouseY = event->cursorY;
+            std::cout << "Left mouse clicked at (" << mouseX << ", " << mouseY << ")" << std::endl;
+        }
+    }
 
 private:
     bool jKeyPressed = false;
     int selectedIndex = -1;
+    std::string selectedBoneName = "";
     std::string currentModel = "";
+    bool mouseClickPending = false; // 点击标志
+    float mouseX, mouseY;           // 鼠标位置
     std::vector<std::string> droppedFiles;
     std::unordered_map<std::string, std::shared_ptr<Material>> materials;
+    std::vector<std::shared_ptr<Material>> idMaterials;
+    std::shared_ptr<Shader> weightShader;
 };

@@ -20,4 +20,5 @@ public:
     std::shared_ptr<Shader> GetShader() const { return shader; }
 
     void Apply();
+    void SetShader(const std::shared_ptr<Shader> &s) { shader = s; }
 };

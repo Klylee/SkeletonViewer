@@ -10,31 +10,34 @@ Mesh::Mesh(aiMesh *mesh, const aiScene *scence, const std::string &dict)
 {
     v_num = mesh->mNumVertices;
     i_num = mesh->mNumFaces * 3;
-    v_size = mesh->mNumVertices * 8;
+    v_size = mesh->mNumVertices * 11; // 位置（3）+法线（3）+纹理（2）+颜色（3）
     i_size = mesh->mNumFaces * 3;
     vertices = new float[v_size];
     indices = new unsigned int[i_size];
-
+    printBoneWeights(mesh);
     for (int i = 0; i < mesh->mNumVertices; i++)
     {
         try
         {
-            vertices[i * 8 + 0] = mesh->mVertices[i].x;
-            vertices[i * 8 + 1] = mesh->mVertices[i].y;
-            vertices[i * 8 + 2] = mesh->mVertices[i].z;
-            vertices[i * 8 + 3] = mesh->mNormals[i].x;
-            vertices[i * 8 + 4] = mesh->mNormals[i].y;
-            vertices[i * 8 + 5] = mesh->mNormals[i].z;
+            vertices[i * 11 + 0] = mesh->mVertices[i].x;
+            vertices[i * 11 + 1] = mesh->mVertices[i].y;
+            vertices[i * 11 + 2] = mesh->mVertices[i].z;
+            vertices[i * 11 + 3] = mesh->mNormals[i].x;
+            vertices[i * 11 + 4] = mesh->mNormals[i].y;
+            vertices[i * 11 + 5] = mesh->mNormals[i].z;
             if (mesh->mTextureCoords[0])
             {
-                vertices[i * 8 + 6] = mesh->mTextureCoords[0][i].x;
-                vertices[i * 8 + 7] = mesh->mTextureCoords[0][i].y;
+                vertices[i * 11 + 6] = mesh->mTextureCoords[0][i].x;
+                vertices[i * 11 + 7] = mesh->mTextureCoords[0][i].y;
             }
             else
             {
-                vertices[i * 8 + 6] = 0.0f;
-                vertices[i * 8 + 7] = 0.0f;
+                vertices[i * 11 + 6] = 0.0f;
+                vertices[i * 11 + 7] = 0.0f;
             }
+            vertices[i * 11 + 8] = 0.0f;  // R
+            vertices[i * 11 + 9] = 0.0f;  // G
+            vertices[i * 11 + 10] = 0.0f; // B
         }
         catch (...)
         {
@@ -83,7 +86,35 @@ Mesh::Mesh(aiMesh *mesh, const aiScene *scence, const std::string &dict)
             textures.push_back(Texture(dict, texfile, TextureType::AMBIENT));
         }
     }
+    // 将权重数据按骨骼copy一份
+    for (unsigned int i = 0; i < mesh->mNumBones; i++)
+    {
+        aiBone *bone = mesh->mBones[i];
+        BoneWeight bw;
+
+        for (unsigned int j = 0; j < bone->mNumWeights; j++)
+        {
+            bw.vertexIds.push_back(bone->mWeights[j].mVertexId);
+            bw.weights.push_back(bone->mWeights[j].mWeight);
+        }
+        boneWeights[bone->mName.C_Str()] = std::move(bw);
+    }
 }
+
+void Mesh::printBoneWeights(aiMesh *mesh)
+{
+    for (unsigned int i = 0; i < mesh->mNumBones; i++)
+    {
+        aiBone *bone = mesh->mBones[i];
+        std::cout << "Bone: " << bone->mName.C_Str() << std::endl;
+        for (unsigned int j = 0; j < bone->mNumWeights; j++)
+        {
+            std::cout << "  Vertex " << bone->mWeights[j].mVertexId
+                      << " -> Weight: " << bone->mWeights[j].mWeight << std::endl;
+        }
+    }
+}
+
 Mesh::~Mesh()
 {
     if (vertices)
@@ -102,21 +133,29 @@ void Mesh::initialize()
 {
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
+
     glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, v_size * sizeof(float), vertices, GL_STATIC_DRAW);
 
     glGenBuffers(1, &ibo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, i_size * sizeof(float), indices, GL_STATIC_DRAW);
-
+    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, i_size * sizeof(float), indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, i_size * sizeof(unsigned int), indices, GL_STATIC_DRAW);
+    // 位置
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (const void *)(0 * sizeof(float)));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (const void *)(0 * sizeof(float)));
+    // 法线
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (const void *)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (const void *)(3 * sizeof(float)));
+    // 纹理
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (const void *)(6 * sizeof(float)));
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (const void *)(6 * sizeof(float)));
+    // 颜色
+    glEnableVertexAttribArray(7);
+    glVertexAttribPointer(7, 3, GL_FLOAT, GL_FALSE, 11 * sizeof(float), (const void *)(8 * sizeof(float)));
 }
+
 void Mesh::draw(std::shared_ptr<Shader> shader)
 {
     unsigned int count = 1;

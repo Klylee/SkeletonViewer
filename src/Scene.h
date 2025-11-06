@@ -1,10 +1,10 @@
 #pragma once
-
-#pragma once
+#include <iostream>
 #include <vector>
 #include <memory>
 #include <unordered_map>
 #include <string>
+#include <algorithm>
 
 #include "Camera.h"
 #include "SceneObject.h"

@@ -36,7 +36,7 @@ public:
 
     std::vector<glm::vec4> weightColors; // CPU 上每个顶点对应颜色
     unsigned int weightColorVBO = 0;     // GPU buffer
-    GLuint weightVAO = 0;                // 新增
+    unsigned int weightVAO = 0;          // 新增
     Mesh() : v_size(0), i_size(0), vertices(nullptr), indices(nullptr), vao(0), vbo(0), ibo(0), instanceVBO(0) {}
     Mesh(aiMesh *mesh, const aiScene *scence, const std::string &dict);
     ~Mesh();

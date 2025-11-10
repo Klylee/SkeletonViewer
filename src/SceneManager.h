@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 #include "Scene.h"
-
+#include "Model.h"
 class SceneManager
 {
 public:
@@ -36,10 +36,14 @@ public:
             currentScene->UpdateAll();
     }
 
-    static void Draw()
+    static void Draw(const std::string &a)
     {
-        if (currentScene)
-            currentScene->DrawAll();
+        if (currentScene){
+            if(a=="Bone")
+                currentScene->DrawAll(ObjectType::Bone);
+            else if(a=="Mesh")
+                currentScene->DrawAll(ObjectType::Mesh);
+        }
     }
 
     static void Remove(const std::string &name)

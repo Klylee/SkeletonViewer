@@ -4,16 +4,22 @@
 layout (location = 0) in vec3 aPos;
 //layout (location = 3) in mat4 instanceModel;
 layout (location = 7) in vec3 aColor; // 顶点颜色（R,G,B）
+layout (location = 1) in vec3 aNormal;
 
 out vec3 vColor;
+out vec3 vNormal;         // 新增：用于光照计算的世界空间法线
+out vec3 vWorldPos;       // 新增：用于光照计算的世界空间位置
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
 void main()
 {
-    gl_Position = projection * view * model * vec4(aPos, 1.0);
+    vec4 worldPos = model * vec4(aPos, 1.0); 
+    gl_Position = projection * view * worldPos; // 使用计算好的 worldPos
     vColor = aColor;
+    vWorldPos = worldPos.xyz;
+    vNormal = mat3(model) * aNormal;
 }
 
 #shader fragment
@@ -21,15 +27,34 @@ void main()
 
 in vec3 vColor;
 out vec4 FragColor;
-
-uniform vec4 color;
+in vec3 vNormal;
+in vec3 vWorldPos;
+uniform vec4 uDefaultColor;  // 原本的淡蓝色
+uniform vec3 uAmbientColor;       // 环境光颜色 (需从 CPU 传入)
+uniform vec3 uLightPos;           // 光源位置 (需从 CPU 传入)
+uniform vec3 uLightColor;         // 光源颜色 (需从 CPU 传入)
 
 void main()
 {
-    // 如果顶点颜色几乎为零，就使用 uniform 颜色；否则使用顶点颜色
-    float colorStrength = length(vColor);
-    if (colorStrength == 0.0)
-        FragColor = color;  // 默认颜色回退
-    else
-        FragColor = vec4(vColor, 1.0);
+        // --- 颜色选择与平滑处理 ---
+    // 检查经过 GPU 插值后的颜色强度。这是实现平滑渐变的关键。
+    float colorStrength = dot(vColor, vec3(1.0));
+    // 如果权重颜色强度大于阈值（0.01），则使用权重颜色，否则使用默认颜色。
+    vec3 baseColor = (colorStrength > 0.00) ? vColor : uDefaultColor.rgb;
+
+    // --- 光照计算 (Ambient + Diffuse) ---
+    vec3 norm = normalize(vNormal);
+
+    // 1. 环境光 (Ambient): 确保阴影处不全黑
+    vec3 ambient = uAmbientColor * baseColor;
+
+    // 2. 漫反射 (Diffuse): 模拟光线方向
+    vec3 lightDir = normalize(uLightPos - vWorldPos);
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = uLightColor * diff * baseColor;
+
+    // 最终颜色 = 环境光 + 漫反射
+    vec3 finalColor = ambient + diffuse;
+    
+    FragColor = vec4(finalColor, 1.0);
 }

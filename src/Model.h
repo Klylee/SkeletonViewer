@@ -6,10 +6,12 @@
 #include "SceneObject.h"
 #include "Path.h"
 #include "Material.h"
-
+enum class ObjectType { Mesh, Bone };
 class Model : public SceneObject
 {
 public:
+    //添加标签
+    ObjectType type = ObjectType::Mesh; // 默认是 Mesh
     REGISTER_SCENE_OBJECT(Model)
 
     std::shared_ptr<Material> material;

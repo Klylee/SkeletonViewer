@@ -29,17 +29,22 @@ protected:
         std::shared_ptr<Shader> shader = std::make_shared<Shader>(std::unordered_map<ShaderVariant, std::string>{
             {ShaderVariant::Basic, Path(ROOT_DIR) + "assets/shader/transparent.shader"},
             {ShaderVariant::Instanced, Path(ROOT_DIR) + "assets/shader/transparent_instanced.shader"}});
-
+        std::shared_ptr<Shader> idshader = std::make_shared<Shader>(std::unordered_map<ShaderVariant, std::string>{
+            {ShaderVariant::Basic, Path(ROOT_DIR) + "assets/shader/id_picking.shader"},
+            {ShaderVariant::Instanced, Path(ROOT_DIR) + "assets/shader/id_picking_instanced.shader"}});
         {
             std::shared_ptr<Material> modelMaterial = std::make_shared<Material>(shader);
-            modelMaterial->SetUniform("color", "vec4f", glm::vec4(2.0f / 255.0f, 163.0f / 255.0f, 218.0f / 255.0f, 0.3f));
+            modelMaterial->SetUniform("uDefaultColor", "vec4f", glm::vec4(2.0f / 255.0f, 163.0f / 255.0f, 218.0f / 255.0f, 0.3f));
+            modelMaterial->SetUniform("uAmbientColor", "vec3f", glm::vec3(0.8f));      // 环境光
+            modelMaterial->SetUniform("uLightPos", "vec3f", glm::vec3(100.0f, 100.0f, 100.0f)); // 光源位置
+            modelMaterial->SetUniform("uLightColor", "vec3f", glm::vec3(0.7f));        // 光源颜色
             materials["model"] = modelMaterial;
 
-            std::shared_ptr<Material> nodeMaterial = std::make_shared<Material>(shader);
+            std::shared_ptr<Material> nodeMaterial = std::make_shared<Material>(idshader);
             nodeMaterial->SetUniform("color", "vec4f", glm::vec4(218.0f / 255.0f, 169.0f / 255.0f, 2.0f / 255.0f, 1.0f));
             materials["node"] = nodeMaterial;
 
-            std::shared_ptr<Material> linkMaterial = std::make_shared<Material>(shader);
+            std::shared_ptr<Material> linkMaterial = std::make_shared<Material>(idshader);
             linkMaterial->SetUniform("color", "vec4f", glm::vec4(113.0f / 255.0f, 121.0f / 255.0f, 224.0f / 255.0f, 1.0f));
             materials["link"] = linkMaterial;
         }
@@ -53,7 +58,7 @@ protected:
                 float n = gray / 100.0f;        // 映射到 0~1
                 glm::vec4 color(n, n, n, 1.0f); // vec4(R=G=B=gray, A=1)
 
-                idMaterials[i] = std::make_shared<Material>(shader);
+                idMaterials[i] = std::make_shared<Material>(idshader);
                 idMaterials[i]->SetUniform("color", "vec4f", color); // 注意 uniform 名称和 shader 匹配
             }
         }
@@ -70,10 +75,10 @@ protected:
         glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        if (glfwGetKey(window, GLFW_KEY_J) == GLFW_RELEASE)
-        {
-            jKeyPressed = false;
-        }
+        //if (glfwGetKey(window, GLFW_KEY_J) == GLFW_RELEASE)
+        //{
+        //    jKeyPressed = false;
+        //}
         if (mouseClickPending && !currentModel.empty())
         {
             // --- 保存当前状态 ---
@@ -146,14 +151,8 @@ protected:
                 glDepthMask(GL_TRUE);
             else
                 glDepthMask(GL_FALSE);
-
-            // 恢复 depth test 状态
-            if (!prevDepthTest)
-                glDisable(GL_DEPTH_TEST); // 如果之前没启用则禁用
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        }
     }
+}
 
     void Render() override
     {
@@ -170,42 +169,57 @@ protected:
             // 遍历模型的每个 Mesh
             for (auto &mesh : model->meshes)
             {
-                glm::vec3 defaultBlue(2.0f / 255.0f, 163.0f / 255.0f, 218.0f / 255.0f);
-                for (int i = 0; i < mesh->v_num; i++)
-                {
-                    mesh->vertices[i * 11 + 8] = defaultBlue.r;
-                    mesh->vertices[i * 11 + 9] = defaultBlue.g;
-                    mesh->vertices[i * 11 + 10] = defaultBlue.b;
+                for (int i = 0; i < mesh->v_num; i++) {
+                    mesh->vertices[i*11 + 8] = 0.0f;
+                    mesh->vertices[i*11 + 9] = 0.0f;
+                    mesh->vertices[i*11 + 10] = 0.0f;
                 }
                 auto it = mesh->boneWeights.find(selectedBoneName);
                 if (it != mesh->boneWeights.end())
                 {
-                    const auto &bw = it->second;
-                    for (size_t i = 0; i < bw.vertexIds.size(); ++i)
-                    {
+                    const auto & bw = it->second;
+                    for (size_t i = 0; i < bw.vertexIds.size(); ++i) {
                         int vid = bw.vertexIds[i];
                         float weight = bw.weights[i]; // 0~1
+                        
+                       weight = glm::clamp(weight, 0.0f, 1.0f);
 
-                        weight = glm::clamp(weight, 0.0f, 1.0f);
-                        // 从浅蓝 -> 红 渐变
-                        glm::vec3 blue = glm::vec3(2.0f / 255.0f, 163.0f / 255.0f, 218.0f / 255.0f);
-                        glm::vec3 red = glm::vec3(1.0f, 0.0f, 0.0f);
-                        glm::vec3 color = glm::mix(blue, red, weight);
+                        // 颜色定义：红(高权重) → 黄(中间) → 绿(低权重)
+                        glm::vec3 red   = glm::vec3(1.0f, 0.0f, 0.0f); // 高权重颜色: 红色
+                        glm::vec3 yellow= glm::vec3(1.0f, 1.0f, 0.0f); // 中间颜色: 黄色
+                        glm::vec3 green = glm::vec3(0.0f, 1.0f, 0.0f); // 低权重颜色: 绿色
 
-                        mesh->vertices[vid * 11 + 8] = color.r;
-                        mesh->vertices[vid * 11 + 9] = color.g;
+                        glm::vec3 color;
+                        if (weight > 0.5f)
+                        // 从黄色到红色 (0.5 ~ 1.0)
+                            color = glm::mix(yellow, red, (weight - 0.5f) * 2.0f);
+                        else
+                        // 从绿色到黄色 (0.0 ~ 0.5)
+                            color = glm::mix(green, yellow, weight * 2.0f);
+
+                        mesh->vertices[vid * 11 + 8]  = color.r;
+                        mesh->vertices[vid * 11 + 9]  = color.g;
                         mesh->vertices[vid * 11 + 10] = color.b;
                     }
+                }
                     glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
                     glBufferSubData(GL_ARRAY_BUFFER, 0, mesh->v_size * sizeof(float), mesh->vertices);
-                }
+                
             }
         }
-        // 渲染
-        SceneManager::Draw();
+        //分两步渲染
+        //对蒙皮渲染开启深度测试
+        glEnable(GL_DEPTH_TEST);
+        SceneManager::Draw("Mesh");
+        //渲染
         auto camera = SceneManager::GetMainCamera();
         MeshManager::Instance().FlushBatches(camera->GetViewMatrix(),
-                                             camera->GetProjectionMatrix((float)width / (float)height));
+                                         camera->GetProjectionMatrix((float)width / (float)height));
+        //对骨骼渲染关闭深度测试
+        glDisable(GL_DEPTH_TEST);
+        SceneManager::Draw("Bone");
+        MeshManager::Instance().FlushBatches(camera->GetViewMatrix(),
+                                         camera->GetProjectionMatrix((float)width / (float)height));
         MeshManager::Instance().CleanupUnusedMeshes();
     }
 

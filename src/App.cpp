@@ -172,7 +172,8 @@ void App::RenderBefore() {}
 
 void App::Render()
 {
-    SceneManager::Draw(); // 提交绘制
+    SceneManager::Draw("Bone");
+    SceneManager::Draw("Mesh");
 
     auto camera = SceneManager::GetMainCamera();
 

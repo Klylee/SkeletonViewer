@@ -8,7 +8,7 @@
 
 #include "Camera.h"
 #include "SceneObject.h"
-
+#include "Model.h"
 class Scene
 {
 public:
@@ -77,12 +77,18 @@ public:
         }
     }
 
-    void DrawAll()
+    void DrawAll(ObjectType typeToDraw)
     {
         for (auto &obj : sceneObjects)
         {
             if (obj && obj->active)
-                obj->draw();
+            if (auto model = std::dynamic_pointer_cast<Model>(obj))
+            {
+                if (model->type == typeToDraw)
+                {
+                    obj->draw();
+                }
+            }
         }
     }
 

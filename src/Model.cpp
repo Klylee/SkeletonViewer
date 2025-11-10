@@ -77,7 +77,7 @@ void Model::awake()
         nextBoneID++;
     }
     numOfBone = nextBoneID;
-    printBoneID();
+    //printBoneID();
 
     // if needing to normalize the whole model
     if (normalizeMesh)
@@ -100,9 +100,9 @@ void Model::awake()
 #pragma omp parallel for reduction(min : minX, minY, minZ) reduction(max : maxX, maxY, maxZ)
             for (int i = 1; i < mesh->v_num; i++)
             {
-                float x = mesh->vertices[i * 8 + 0];
-                float y = mesh->vertices[i * 8 + 1];
-                float z = mesh->vertices[i * 8 + 2];
+                float x = mesh->vertices[i * 11 + 0];
+                float y = mesh->vertices[i * 11 + 1];
+                float z = mesh->vertices[i * 11 + 2];
 
                 if (x < minX)
                     minX = x;
@@ -218,6 +218,7 @@ void Model::AddBoneNodes(const std::shared_ptr<Material> &nodeMaterial, const st
         nodeObj->awake();
         nodeObj->transform.scale(Vector3(0.01f));
         nodeObj->transform.position((head - globalCenter) * globalScale);
+        nodeObj->type = ObjectType::Bone;//标记为bone
         SceneManager::AddObject(nodeObj);
         children.push_back(nodeObj);
 
@@ -247,6 +248,7 @@ void Model::AddBoneNodes(const std::shared_ptr<Material> &nodeMaterial, const st
 
             // 计算位置
             linkObj->transform.position((parentHead - globalCenter) * globalScale);
+            linkObj->type = ObjectType::Bone;//标记为bone
             SceneManager::AddObject(linkObj);
             children.push_back(linkObj);
         }

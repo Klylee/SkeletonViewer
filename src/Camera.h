@@ -20,9 +20,13 @@ public:
 	float farPlane = 100.0f;
 	float speed = 0.1f;
 
+	glm::vec3 target = glm::vec3(0.0f, 0.0f, 0.0f);
+
 	float yaw = 0.0f;
 	float pitch = 0.0f;
 	double sensitivity = 0.1;
+
+	// for mouse left button
 	double lastX = 0, lastY = 0;
 	bool firstMouse = true;
 
@@ -50,8 +54,15 @@ public:
 	Mat4 GetViewMatrix()
 	{
 		Vector3 camPos = transform.position();
-		Vector3 camUp = Vector3(0, 1, 0);
-		return glm::lookAt(camPos, camPos + GetForward(), camUp);
+		glm::vec3 camUp = transform.rotation() * glm::vec3(0, 1, 0);
+		glm::vec3 forward = GetForward();
+
+		// // 检查是否平行
+		// if (fabs(glm::dot(forward, camUp)) > 0.99f) // 平行或反平行
+		// {
+		// 	camUp = glm::vec3(0, 0, 1); // 换一个备用up向量（Z轴方向）
+		// }
+		return glm::lookAt(camPos, camPos + forward, camUp);
 	}
 	Mat4 GetProjectionMatrix(float aspectRatio = 1) const
 	{

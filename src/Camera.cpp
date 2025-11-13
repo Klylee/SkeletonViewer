@@ -2,6 +2,7 @@
 #include "Input.h"
 #include "GlobalTime.h"
 #include <iostream>
+#include <algorithm>
 
 void Camera::update()
 {
@@ -26,7 +27,6 @@ void Camera::update()
 
 	if (Input::isMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT))
 	{
-		// Mouse Event
 		auto [xpos, ypos] = Input::getMousePosition();
 		if (firstMouse)
 		{
@@ -39,21 +39,49 @@ void Camera::update()
 		lastX = xpos;
 		lastY = ypos;
 
-		dx *= sensitivity;
-		dy *= sensitivity;
+		if (Input::isKeyPressed(GLFW_KEY_R))
+		{
 
-		yaw += static_cast<float>(dx);
-		pitch += static_cast<float>(-dy);
+			double k = 0.1;
+			double delta_yaw = glm::radians(k * -dx);
+			double delta_pitch = glm::radians(k * dy);
 
-		if (pitch > 89.0f)
-			pitch = 89.0f;
-		if (pitch < -89.0f)
-			pitch = -89.0f;
-		transform.eulerAngles(yaw, pitch, 0.0f);
+			// 绕target旋转
+			glm::vec3 camPos = transform.position();
+			glm::vec3 offset = camPos - target;
+
+			// 绕Y轴旋转 yaw
+			glm::mat4 rotY = glm::rotate(glm::mat4(1.0f), (float)delta_yaw, glm::vec3(0, 1, 0));
+			offset = glm::vec3(rotY * glm::vec4(offset, 1.0f));
+
+			// 绕相机右轴旋转 pitch
+			glm::vec3 right = transform.rotation() * glm::vec3(1, 0, 0);
+			glm::mat4 rotX = glm::rotate(glm::mat4(1.0f), (float)delta_pitch, right);
+			offset = glm::vec3(rotX * glm::vec4(offset, 1.0f));
+
+			camPos = target + offset;
+			transform.position(camPos);
+
+			yaw += glm::degrees(delta_yaw);
+			pitch += glm::degrees(delta_pitch);
+			transform.eulerAngles(yaw, pitch, 0.0f);
+		}
+		else
+		{
+			dx *= sensitivity;
+			dy *= sensitivity;
+
+			yaw += static_cast<float>(dx);
+			pitch += static_cast<float>(-dy);
+
+			transform.eulerAngles(yaw, pitch, 0.0f);
+		}
+
+		// glm::vec3 camUp = transform.rotation() * glm::vec3(0, 1, 0);
+		// std::cout << std::format("{} {} {} {} {}", camUp.x, camUp.y, camUp.z, pitch, yaw) << std::endl;
 	}
 	else
 	{
 		firstMouse = true;
 	}
-	// std::cout << std::format("{} {}", yaw, pitch) << std::endl;
 }

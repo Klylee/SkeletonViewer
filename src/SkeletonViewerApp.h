@@ -4,6 +4,7 @@
 #include <imgui/imgui.h>
 #include <config.h>
 #include <filesystem>
+#include <regex>
 
 #include "App.h"
 #include "Path.h"
@@ -159,36 +160,62 @@ protected:
         // 添加对rignet输入结果的支持，主模型obj，骨骼记录着xxx_rig.txt里面
         if (filepathObj.extension() == "obj")
         {
-            auto rig_txt = filepath.substr(0, filepath.size() - 4) + "_rig.txt";
+            auto rig_txt = filepath.substr(0, filepath.size() - 4) + "_noisy.txt";
             std::ifstream file(rig_txt);
 
             std::unordered_map<std::string, Vector3> jointPositions;
             std::unordered_map<std::string, std::string> parentOf;
             std::unordered_map<std::string, std::vector<std::string>> childrenOf;
 
+            std::regex jointRegex(R"(j\s+<(.+)>\s+(.+)\s+(.+)\s+(.+))");
+            std::regex edgeRegex(R"(e\s+<(.+)>\s+<(.+)>)");
+
             if (file.is_open())
             {
                 std::string line;
                 while (std::getline(file, line))
                 {
-                    std::istringstream iss(line);
-                    std::string type;
-                    iss >> type;
+                    if (line[0] == 'j')
+                    {
+                        std::smatch match;
+                        if (std::regex_match(line, match, jointRegex))
+                        {
+                            std::string name = match[1];
+                            float x = std::stof(match[2]);
+                            float y = std::stof(match[3]);
+                            float z = std::stof(match[4]);
+                            jointPositions[name] = {x, y, z};
+                        }
+                    }
+                    else if (line[0] == 'e')
+                    {
+                        std::smatch match;
+                        if (std::regex_match(line, match, edgeRegex))
+                        {
+                            std::string parent = match[1];
+                            std::string child = match[2];
+                            parentOf[child] = parent;
+                            childrenOf[parent].push_back(child);
+                        }
+                    }
+                    // std::istringstream iss(line);
+                    // std::string type;
+                    // iss >> type;
 
-                    if (type == "joints")
-                    {
-                        std::string name;
-                        float x, y, z;
-                        iss >> name >> x >> y >> z;
-                        jointPositions[name] = {x, y, z};
-                    }
-                    else if (type == "hier")
-                    {
-                        std::string parent, child;
-                        iss >> parent >> child;
-                        parentOf[child] = parent;
-                        childrenOf[parent].push_back(child);
-                    }
+                    // if (type == "joints")
+                    // {
+                    //     std::string name;
+                    //     float x, y, z;
+                    //     iss >> name >> x >> y >> z;
+                    //     jointPositions[name] = {x, y, z};
+                    // }
+                    // else if (type == "hier")
+                    // {
+                    //     std::string parent, child;
+                    //     iss >> parent >> child;
+                    //     parentOf[child] = parent;
+                    //     childrenOf[parent].push_back(child);
+                    // }
                 }
                 file.close();
             }

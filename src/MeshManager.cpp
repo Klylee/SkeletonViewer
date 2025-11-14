@@ -109,7 +109,7 @@ void MeshManager::FlushBatches(const glm::mat4 &viewMatrix, const glm::mat4 &pro
         currentShader->SetUniformMat4x4f("view", viewMatrix);
         currentShader->SetUniformMat4x4f("projection", projMatrix);
 
-        material->Apply();
+        material->ApplyUniforms();
 
         if (instances->size() == 1)
         {

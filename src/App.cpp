@@ -7,6 +7,7 @@
 #include "Input.h"
 #include "Scene.h"
 #include "Camera.h"
+#include "Renderer.h"
 #include "GlobalTime.h"
 #include "MeshManager.h"
 #include "SceneManager.h"
@@ -163,6 +164,17 @@ void App::Update()
 
 void App::RenderClear()
 {
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    glDepthMask(GL_TRUE);
+    glClearDepth(1.0f);
+    glClearColor(0, 0, 0, 1);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glDisable(GL_BLEND);
+    glDisable(GL_CULL_FACE);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
     auto backgroundColor = SceneManager::GetMainCamera()->backgroundColor;
     glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -176,7 +188,7 @@ void App::Render()
 
     auto camera = SceneManager::GetMainCamera();
 
-    MeshManager::Instance().FlushBatches(
+    Renderer::Instance().FlushBatches(
         camera->GetViewMatrix(),
         camera->GetProjectionMatrix((float)width / (float)height));
     MeshManager::Instance().CleanupUnusedMeshes();

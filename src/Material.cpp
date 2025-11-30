@@ -9,10 +9,13 @@ void Material::ApplyUniforms()
 void Material::ApplyRenderState()
 {
     if (renderState.depthTest)
+    {
         glEnable(GL_DEPTH_TEST);
+    }
     else
         glDisable(GL_DEPTH_TEST);
 
+    glDepthFunc(renderState.depthFunc);
     glDepthMask(renderState.depthWrite ? GL_TRUE : GL_FALSE);
 
     if (renderState.blend)

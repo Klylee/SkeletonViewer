@@ -3,6 +3,8 @@
 #include <string>
 #include <any>
 #include <memory>
+#include <GL/glew.h>
+
 #include "Shader.h"
 
 struct RenderState
@@ -11,11 +13,13 @@ struct RenderState
     bool depthWrite = true;
     bool blend = false;
     bool cullFace = false;
+    GLenum depthFunc = GL_LEQUAL;
     GLenum blendSrc = GL_SRC_ALPHA;
     GLenum blendDst = GL_ONE_MINUS_SRC_ALPHA;
 };
 
-enum RenderQueue {
+enum RenderQueue
+{
     Background = 1000,
     Geometry = 2000,
     AlphaTest = 2450,

@@ -36,10 +36,16 @@ protected:
             materials["model"] = modelMaterial;
 
             std::shared_ptr<Material> nodeMaterial = std::make_shared<Material>(shader);
+            nodeMaterial->renderQueue = RenderQueue::Overlay;
+            nodeMaterial->renderState.depthFunc = GL_ALWAYS;
+            nodeMaterial->renderState.depthWrite = false;
             nodeMaterial->SetUniform("color", "vec4f", glm::vec4(218.0f / 255.0f, 169.0f / 255.0f, 2.0f / 255.0f, 1.0f));
             materials["node"] = nodeMaterial;
 
             std::shared_ptr<Material> linkMaterial = std::make_shared<Material>(shader);
+            linkMaterial->renderQueue = RenderQueue::Overlay;
+            linkMaterial->renderState.depthFunc = GL_ALWAYS;
+            linkMaterial->renderState.depthWrite = false;
             linkMaterial->SetUniform("color", "vec4f", glm::vec4(113.0f / 255.0f, 121.0f / 255.0f, 224.0f / 255.0f, 1.0f));
             materials["link"] = linkMaterial;
         }

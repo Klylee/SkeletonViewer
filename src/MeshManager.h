@@ -28,37 +28,39 @@ public:
     // 根据唯一key（例如path或hash）获取已存在mesh
     std::shared_ptr<Mesh> Get(const std::string &key);
 
-    // 提交绘制请求(需要绘制的SceneObject在Draw里面调用）
-    void Submit(const std::shared_ptr<Mesh> &mesh,
-                const std::shared_ptr<Material> &material,
-                const glm::mat4 &modelMatrix);
+    // // 提交绘制请求(需要绘制的SceneObject在Draw里面调用）
+    // void Submit(const std::shared_ptr<Mesh> &mesh,
+    //             const std::shared_ptr<Material> &material,
+    //             const glm::mat4 &modelMatrix);
 
     // 执行所有批次绘制
-    void FlushBatches(const glm::mat4 &viewMatrix, const glm::mat4 &projMatrix);
+    // void FlushBatches(const glm::mat4 &viewMatrix, const glm::mat4 &projMatrix);
 
-    //定期清除没用的mesh
-    void CleanupUnusedMeshes(int keepFrames = 300) { // 保持300帧（约5秒）
+    // 定期清除没用的mesh
+    void CleanupUnusedMeshes(int keepFrames = 300)
+    { // 保持300帧（约5秒）
         currentFrame++;
-        
-        for (auto it = meshCache.begin(); it != meshCache.end(); ) {
+
+        for (auto it = meshCache.begin(); it != meshCache.end();)
+        {
             const std::string key = it->first;
-            std::shared_ptr<Mesh>& mesh = it->second;
-            
+            std::shared_ptr<Mesh> &mesh = it->second;
+
             // 检查是否长时间未使用且引用计数为1（只有cache持有）
             if (mesh.use_count() == 1)
             {
-                if (currentFrame - meshLastUsedFrame[key] > keepFrames) 
+                if (currentFrame - meshLastUsedFrame[key] > keepFrames)
                 {
                     std::cout << "Cleaning up unused mesh: " << key << std::endl;
                     it = meshCache.erase(it);
                     meshLastUsedFrame.erase(key);
                 }
-                else 
+                else
                 {
                     ++it;
                 }
-            } 
-            else 
+            }
+            else
             {
                 meshLastUsedFrame[key] = currentFrame;
                 ++it;
@@ -81,9 +83,12 @@ private:
     int currentFrame = 0;
 
     // 检查batches中是否包含某个mesh
-    bool batchesContainsMesh(const std::shared_ptr<Mesh>& mesh) {
-        for (const auto& [batchKey, instances] : batches) {
-            if (batchKey.mesh == mesh) {
+    bool batchesContainsMesh(const std::shared_ptr<Mesh> &mesh)
+    {
+        for (const auto &[batchKey, instances] : batches)
+        {
+            if (batchKey.mesh == mesh)
+            {
                 return true;
             }
         }

@@ -8,10 +8,13 @@
 
 #include "Camera.h"
 #include "SceneObject.h"
+#include "LightManager.h"
 
 class Scene
 {
 public:
+    LightManager lightManager;
+
     // 添加对象（注册进场景）
     void AddSceneObject(const std::shared_ptr<SceneObject> &obj)
     {
@@ -23,7 +26,13 @@ public:
 
         sceneObjects.push_back(obj);
         sceneObjectMap[obj->objName] = obj;
-        std::cout << "Added " << "<" << obj->className << ">" << obj->objName << std::endl;
+        // std::cout << "Added " << "<" << obj->className << ">" << obj->objName << std::endl;
+
+        auto lightPtr = std::dynamic_pointer_cast<Light>(obj);
+        if (lightPtr)
+        {
+            lightManager.AddLight(lightPtr);
+        }
     }
 
     // 通过名字查找对象
@@ -61,6 +70,12 @@ public:
                                    [&](auto &o)
                                    { return o == target; }),
                     sceneObjects.end());
+
+                auto lightPtr = std::dynamic_pointer_cast<Light>(target);
+                if (lightPtr)
+                {
+                    lightManager.RemoveLight(lightPtr);
+                }
             }
             sceneObjectMap.erase(it);
             std::cout << "Removed " << "<" << target->className << ">" << name << std::endl;

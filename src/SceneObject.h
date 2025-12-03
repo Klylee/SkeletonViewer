@@ -8,7 +8,6 @@
 #include "Transform.h"
 
 #define REGISTER_SCENE_OBJECT(Derived)                                                        \
-    Derived() { className = #Derived; }                                                       \
     struct Derived##Factory                                                                   \
     {                                                                                         \
         Derived##Factory()                                                                    \

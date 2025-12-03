@@ -168,8 +168,6 @@ void App::RenderClear()
     glDepthFunc(GL_LEQUAL);
     glDepthMask(GL_TRUE);
     glClearDepth(1.0f);
-    glClearColor(0, 0, 0, 1);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glDisable(GL_BLEND);
     glDisable(GL_CULL_FACE);
@@ -184,6 +182,9 @@ void App::RenderBefore() {}
 
 void App::Render()
 {
+    SceneManager::GetCurrentScene()->lightManager.UploadToGPU();
+    SceneManager::GetCurrentScene()->lightManager.BindToShader(0); // UBO binding point 0
+
     SceneManager::Draw(); // 提交绘制
 
     auto camera = SceneManager::GetMainCamera();

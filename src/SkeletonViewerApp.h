@@ -166,7 +166,7 @@ protected:
         // 添加对rignet输入结果的支持，主模型obj，骨骼记录着xxx_rig.txt里面
         if (filepathObj.extension() == "obj")
         {
-            auto rig_txt = filepath.substr(0, filepath.size() - 4) + "_noisy.txt";
+            auto rig_txt = filepath.substr(0, filepath.size() - 4) + ".txt";
             std::ifstream file(rig_txt);
 
             std::unordered_map<std::string, Vector3> jointPositions;
@@ -255,7 +255,7 @@ protected:
         model->normalizeMesh = true;
         model->SetMaterial(materials["model"]);
         model->awake();
-        model->printBoneInfo();
+        // model->printBoneInfo();
 
         model->AddBoneNodes(materials["node"], materials["link"]);
 
